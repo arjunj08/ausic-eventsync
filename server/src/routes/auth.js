@@ -395,6 +395,8 @@ router.post('/verify-otp', async (req, res) => {
     console.error('Verify OTP error:', error);
     res.status(500).json({ error: 'Server error during OTP verification' });
   }
+});
+
 // Resend 2FA OTP (unauthenticated)
 router.post('/resend-otp', async (req, res) => {
   try {
