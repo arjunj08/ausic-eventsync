@@ -1,0 +1,31 @@
+# Dependency directories
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Local database files
+db/
+*.log
+
+# Environments
+.env
+.env.local
+.env.*.local
+
+# Android build outputs and caches
+.gradle/
+android/.gradle/
+android/app/build/
+android/local.properties
+capture/
+*.apk
+*.aar
+
+# Editor and OS caches
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Static upload folders (optional)
+server/uploads/
