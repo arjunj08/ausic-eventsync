@@ -23,6 +23,12 @@ export default function Settings() {
   const [aiPersona, setAiPersona] = useState('helpful');
   const [huddleVolume, setHuddleVolume] = useState(70);
 
+  // Email Alerts states
+  const [taskAssigned, setTaskAssigned] = useState(true);
+  const [meetingScheduled, setMeetingScheduled] = useState(true);
+  const [expenseUpdate, setExpenseUpdate] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(true);
+
   // Password form
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -50,6 +56,12 @@ export default function Settings() {
       setEmailAlerts(settings.emailAlerts);
       setAiPersona(settings.aiPersona);
 
+      const emailNotifs = res.data.user.emailNotifications || { taskAssigned: true, meetingScheduled: true, expenseUpdate: true, weeklyDigest: true };
+      setTaskAssigned(emailNotifs.taskAssigned);
+      setMeetingScheduled(emailNotifs.meetingScheduled);
+      setExpenseUpdate(emailNotifs.expenseUpdate);
+      setWeeklyDigest(emailNotifs.weeklyDigest);
+
       // Fetch volume from localStorage if saved
       const savedVolume = localStorage.getItem('huddle_volume');
       if (savedVolume !== null) {
@@ -75,7 +87,13 @@ export default function Settings() {
       await axios.patch('/api/profile/settings/me', {
         notificationSound,
         emailAlerts,
-        aiPersona
+        aiPersona,
+        emailNotifications: {
+          taskAssigned,
+          meetingScheduled,
+          expenseUpdate,
+          weeklyDigest
+        }
       });
 
       // Save huddle volume in localStorage
@@ -207,6 +225,79 @@ export default function Settings() {
                       type="checkbox" 
                       checked={emailAlerts}
                       onChange={(e) => setEmailAlerts(e.target.checked)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00BFFF]"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Email Notification Toggles */}
+              <div className="space-y-4 border-t border-gray-850 pt-6">
+                <h3 className="text-sm font-semibold text-[#00BFFF] uppercase tracking-wider mb-3">Email Alerts Subscriptions</h3>
+                
+                {/* Task Assigned */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-white block">Task Assignments</span>
+                    <span className="text-[11px] text-gray-400">Receive an email when new coordinate tasks are assigned.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={taskAssigned}
+                      onChange={(e) => setTaskAssigned(e.target.checked)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00BFFF]"></div>
+                  </label>
+                </div>
+
+                {/* Meeting Scheduled */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-white block">Meeting Schedules</span>
+                    <span className="text-[11px] text-gray-400">Receive email invitations and agendas for club briefs.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={meetingScheduled}
+                      onChange={(e) => setMeetingScheduled(e.target.checked)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00BFFF]"></div>
+                  </label>
+                </div>
+
+                {/* Expense Update */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-white block">Expense Slips Updates</span>
+                    <span className="text-[11px] text-gray-400">Receive emails when your budget claims are approved/rejected.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={expenseUpdate}
+                      onChange={(e) => setExpenseUpdate(e.target.checked)}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00BFFF]"></div>
+                  </label>
+                </div>
+
+                {/* Weekly Digest */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-white block">Monday Morning Weekly Summary</span>
+                    <span className="text-[11px] text-gray-400">Receive a weekly overview of pending tasks and events.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={weeklyDigest}
+                      onChange={(e) => setWeeklyDigest(e.target.checked)}
                       className="sr-only peer" 
                     />
                     <div className="w-11 h-6 bg-gray-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00BFFF]"></div>

@@ -6,6 +6,7 @@ import Team from '../models/Team.js';
 import Notification from '../models/Notification.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
+import { sendTaskAssignedEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -74,6 +75,16 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
         read: false
       });
       await notif.save();
+
+      // Send email alert asynchronously
+      try {
+        const assignedUser = await User.findById(assignedTo);
+        if (assignedUser) {
+          await sendTaskAssignedEmail(assignedUser, task);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send task assignment email:', emailErr);
+      }
     }
 
     res.status(201).json(task);
@@ -114,6 +125,16 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
         read: false
       });
       await notif.save();
+
+      // Send email alert asynchronously
+      try {
+        const assignedUser = await User.findById(assignedTo);
+        if (assignedUser) {
+          await sendTaskAssignedEmail(assignedUser, task);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send task update assignment email:', emailErr);
+      }
     }
 
     res.json(task);

@@ -23,6 +23,11 @@ import attendanceRoutes from './routes/attendance.js';
 import profileRoutes from './routes/profile.js';
 import pollsRoutes from './routes/polls.js';
 import adminRoutes from './routes/admin.js';
+import aiRoutes from './routes/ai.js';
+import meetingsRoutes from './routes/meetings.js';
+import searchRoutes from './routes/search.js';
+import usersRoutes from './routes/users.js';
+import { initScheduler } from './cron.js';
 
 // Socket Handlers
 import registerChatHandler from './socket/chatHandler.js';
@@ -65,6 +70,10 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/polls', pollsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/meetings', meetingsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -91,6 +100,7 @@ const io = new Server(httpServer, {
   }
 });
 app.set('io', io);
+initScheduler(io);
 
 // Active connections registry (userId -> socket.id)
 const activeUsers = new Map();

@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
+import { sendExpenseUpdateEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -107,6 +108,16 @@ router.patch('/:id/status', authMiddleware, adminOnly, async (req, res) => {
       read: false
     });
     await notif.save();
+
+    // Send email alert asynchronously
+    try {
+      const submitter = await User.findById(expense.submittedBy);
+      if (submitter) {
+        await sendExpenseUpdateEmail(submitter, { itemDescription: expense.title, amount: expense.amount }, status);
+      }
+    } catch (emailErr) {
+      console.error('Failed to send expense update notification email:', emailErr);
+    }
 
     res.json(expense);
   } catch (error) {

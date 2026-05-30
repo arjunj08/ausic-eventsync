@@ -138,6 +138,7 @@ router.get('/:userId', authMiddleware, async (req, res) => {
         socialLinks: userProfile.socialLinks || { linkedin: '', github: '', instagram: '' },
         teamRole: userProfile.teamRole || '',
         settings: userProfile.settings || { notificationSound: true, emailAlerts: true, aiPersona: 'helpful' },
+        emailNotifications: userProfile.emailNotifications || { taskAssigned: true, meetingScheduled: true, expenseUpdate: true, weeklyDigest: true },
         createdAt: userProfile.createdAt
       },
       team: teamDetails
@@ -184,7 +185,7 @@ router.patch('/me', authMiddleware, async (req, res) => {
 // Update settings
 router.patch('/settings/me', authMiddleware, async (req, res) => {
   try {
-    const { notificationSound, emailAlerts, aiPersona } = req.body;
+    const { notificationSound, emailAlerts, aiPersona, emailNotifications } = req.body;
     
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -199,8 +200,21 @@ router.patch('/settings/me', authMiddleware, async (req, res) => {
     if (emailAlerts !== undefined) user.settings.emailAlerts = emailAlerts;
     if (aiPersona !== undefined) user.settings.aiPersona = aiPersona;
 
+    if (emailNotifications !== undefined) {
+      user.emailNotifications = {
+        taskAssigned: emailNotifications.taskAssigned !== false,
+        meetingScheduled: emailNotifications.meetingScheduled !== false,
+        expenseUpdate: emailNotifications.expenseUpdate !== false,
+        weeklyDigest: emailNotifications.weeklyDigest !== false
+      };
+    }
+
     await user.save();
-    res.json({ message: 'Settings updated successfully', settings: user.settings });
+    res.json({ 
+      message: 'Settings updated successfully', 
+      settings: user.settings,
+      emailNotifications: user.emailNotifications 
+    });
   } catch (error) {
     console.error('Update settings error:', error);
     res.status(500).json({ error: 'Failed to update settings' });

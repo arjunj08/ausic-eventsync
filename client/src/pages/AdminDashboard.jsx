@@ -139,7 +139,10 @@ export default function AdminDashboard() {
   // Open assignment modal for a user
   const openAssignModal = (member) => {
     setSelectedUser(member);
-    setAssignTeamId(member.teamId || '');
+    const mTeamId = (member.teamId && typeof member.teamId === 'object') 
+      ? (member.teamId._id || member.teamId.id) 
+      : member.teamId;
+    setAssignTeamId(mTeamId || '');
     // Fetch user details for teamRole
     axios.get(`/api/profile/${member._id || member.id}`).then(res => {
       setAssignTeamRole(res.data.user.teamRole || '');
@@ -522,7 +525,13 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {members.map(member => {
-                  const assignedTeam = teams.find(t => t._id === member.teamId || t.id === member.teamId);
+                  const assignedTeam = teams.find(t => {
+                    const tId = t._id || t.id;
+                    const mTeamId = (member.teamId && typeof member.teamId === 'object') 
+                      ? (member.teamId._id || member.teamId.id) 
+                      : member.teamId;
+                    return tId === mTeamId;
+                  });
                   return (
                     <tr key={member._id || member.id} className="border-b border-gray-850/50 hover:bg-[#1A1A1A]/30 transition-colors">
                       <td className="px-4 py-3 flex items-center gap-3">

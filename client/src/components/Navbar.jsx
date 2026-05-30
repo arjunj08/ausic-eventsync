@@ -18,10 +18,14 @@ import {
   ClipboardCheck,
   User,
   LayoutGrid,
-  X
+  X,
+  Search,
+  Sparkles,
+  Users,
+  Video
 } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab }) {
+export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
   const { user, logout } = useContext(AuthContext);
   const { unreadNotifCount, unreadDMs } = useContext(SocketContext);
   
@@ -41,6 +45,8 @@ export default function Navbar({ activeTab, setActiveTab }) {
 
   // Secondary tools in the "More" grid menu
   const secondaryTools = [
+    { id: 'meetings', label: 'Meetings', icon: Video },
+    { id: 'ai_planner', label: 'AI Planner', icon: Sparkles },
     { id: 'map', label: 'Zone Map', icon: Map },
     { id: 'recurring', label: 'Recurring Tasks', icon: RefreshCw },
     { id: 'reports', label: 'Reports', icon: BarChart2 },
@@ -48,9 +54,11 @@ export default function Navbar({ activeTab, setActiveTab }) {
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  // If user is Admin, insert Admin Dashboard to secondary tools
+  // If user is Admin, insert Admin Dashboard and Squad Roles to secondary tools
   if (user && user.role === 'admin') {
-    // Add Admin Dashboard at the beginning of secondary tools
+    if (!secondaryTools.some(t => t.id === 'admin_members')) {
+      secondaryTools.unshift({ id: 'admin_members', label: 'Squad Roles', icon: Users });
+    }
     if (!secondaryTools.some(t => t.id === 'admin_dashboard')) {
       secondaryTools.unshift({ id: 'admin_dashboard', label: 'Admin Panel', icon: LayoutGrid });
     }
@@ -76,6 +84,15 @@ export default function Navbar({ activeTab, setActiveTab }) {
         {/* User Stats & Profile Controls */}
         {user && (
           <div className="flex items-center space-x-4">
+            {/* Spotlight Search trigger */}
+            <button 
+              onClick={() => setIsSearchOpen(true)} 
+              className="p-2 rounded-full hover:bg-gray-850 transition-colors text-gray-400 hover:text-white"
+              title="Search Workspace (Ctrl+K)"
+            >
+              <Search className="h-6 w-6" />
+            </button>
+
             {/* Dedicated Chat Link */}
             <button 
               onClick={() => handleTabClick('chat')} 

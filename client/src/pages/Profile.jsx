@@ -41,7 +41,7 @@ const BADGE_INFO = {
   }
 };
 
-export default function Profile() {
+export default function Profile({ setActiveTab }) {
   const { user: currentUser, refreshUser } = useContext(AuthContext);
 
   const [profileUser, setProfileUser] = useState(null);
@@ -237,13 +237,33 @@ export default function Profile() {
                   <span className="h-4 w-4 rounded-full" style={{ backgroundColor: profileTeam.color || '#00BFFF' }}></span>
                   <span className="text-white font-extrabold text-sm">{profileTeam.name}</span>
                 </div>
-                <div className="text-xs text-gray-400 leading-relaxed bg-[#1A1A1A] p-3 rounded-lg border border-gray-850">
-                  <div className="mb-1 text-[11px] font-semibold text-gray-500 uppercase">Team Role Info:</div>
-                  {profileUser.teamRole ? (
-                    <span className="text-[#00BFFF] font-bold text-xs">{profileUser.teamRole}</span>
-                  ) : (
-                    <span className="italic text-gray-500">Add role title in details (e.g. Lead Designer)</span>
-                  )}
+                <div className="text-xs text-gray-400 leading-relaxed bg-[#1A1A1A] p-3 rounded-lg border border-gray-850 space-y-2">
+                  <div>
+                    <div className="text-[11px] font-semibold text-gray-500 uppercase mb-0.5">Team Role Info:</div>
+                    {profileUser.teamRole ? (
+                      <span className="text-[#00BFFF] font-bold text-xs">{profileUser.teamRole}</span>
+                    ) : (
+                      <span className="italic text-gray-500">Add role title in details (e.g. Lead Designer)</span>
+                    )}
+                  </div>
+                  
+                  {/* Action buttons to jump to workspace operations */}
+                  <div className="flex gap-2 pt-2 border-t border-gray-800">
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab && setActiveTab('kanban')}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold text-[10px] py-2 rounded transition-all text-center tracking-wider uppercase"
+                    >
+                      Kanban
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab && setActiveTab('chat')}
+                      className="flex-1 bg-[#00BFFF]/10 hover:bg-[#00BFFF]/20 text-[#00BFFF] border border-[#00BFFF]/20 font-bold text-[10px] py-2 rounded transition-all text-center tracking-wider uppercase"
+                    >
+                      Chat
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (

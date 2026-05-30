@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/Navbar';
@@ -21,12 +21,30 @@ import AdminDashboard from './pages/AdminDashboard';
 import Kanban from './pages/Kanban';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import Meetings from './pages/Meetings';
+import AIPlanner from './pages/AIPlanner';
+import MembersConsole from './pages/MembersConsole';
+import Onboarding from './pages/Onboarding';
+import SearchOverlay from './components/SearchOverlay';
 
 import { Loader2 } from 'lucide-react';
 
 function MainAppContent() {
   const { user, loading } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('events');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Bind global Ctrl+K spotlight keydown listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (loading) {
     return (
@@ -69,9 +87,15 @@ function MainAppContent() {
       case 'kanban':
         return <Kanban />;
       case 'profile':
-        return <Profile />;
+        return <Profile setActiveTab={setActiveTab} />;
       case 'settings':
         return <Settings />;
+      case 'meetings':
+        return <Meetings />;
+      case 'ai_planner':
+        return <AIPlanner />;
+      case 'admin_members':
+        return <MembersConsole />;
       default:
         return <Events />;
     }
@@ -79,17 +103,30 @@ function MainAppContent() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      {/* Block and show onboarding if user profile is incomplete */}
+      {user && !user.isOnboarded && <Onboarding />}
+      
       {/* Header and Bottom Navigation */}
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} setIsSearchOpen={setIsSearchOpen} />
       
       {/* Main Content Area */}
-      <main className="flex-1 w-full bg-[#0a0a0a]">
+      <main className="flex-1 w-full bg-[#0a0a0a] pt-16 pb-16">
         {renderPage()}
       </main>
 
       {/* Persistent global widgets */}
       <Chatbot />
       <CallModal />
+
+      {/* Spotlight search overlay */}
+      <SearchOverlay 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        onSelect={(tabId) => {
+          setActiveTab(tabId);
+          setIsSearchOpen(false);
+        }} 
+      />
     </div>
   );
 }
