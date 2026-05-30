@@ -91,6 +91,8 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        subRole: user.subRole,
+        isOnboarded: user.isOnboarded,
         teamId: user.teamId,
         avatar: user.avatar
       }
@@ -134,6 +136,8 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        subRole: user.subRole,
+        isOnboarded: user.isOnboarded,
         teamId: user.teamId,
         avatar: user.avatar
       }
@@ -170,6 +174,8 @@ router.get('/me', authMiddleware, async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        subRole: user.subRole,
+        isOnboarded: user.isOnboarded,
         teamId: user.teamId,
         avatar: user.avatar,
         createdAt: user.createdAt
