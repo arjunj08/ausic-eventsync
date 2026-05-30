@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/Navbar';
@@ -25,7 +26,14 @@ import Meetings from './pages/Meetings';
 import AIPlanner from './pages/AIPlanner';
 import MembersConsole from './pages/MembersConsole';
 import Onboarding from './pages/Onboarding';
+import PublicEvent from './pages/PublicEvent';
+import AttendanceReport from './pages/AttendanceReport';
+import OTPVerify from './pages/OTPVerify';
+
+// Components
 import SearchOverlay from './components/SearchOverlay';
+import AnnouncementBanner from './components/AnnouncementBanner';
+import PwaInstallBanner from './components/PwaInstallBanner';
 
 import { Loader2 } from 'lucide-react';
 
@@ -96,6 +104,8 @@ function MainAppContent() {
         return <AIPlanner />;
       case 'admin_members':
         return <MembersConsole />;
+      case 'attendance_report':
+        return <AttendanceReport />;
       default:
         return <Events />;
     }
@@ -106,6 +116,9 @@ function MainAppContent() {
       {/* Block and show onboarding if user profile is incomplete */}
       {user && !user.isOnboarded && <Onboarding />}
       
+      {/* Active Top Banners */}
+      <AnnouncementBanner />
+
       {/* Header and Bottom Navigation */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} setIsSearchOpen={setIsSearchOpen} />
       
@@ -117,6 +130,7 @@ function MainAppContent() {
       {/* Persistent global widgets */}
       <Chatbot />
       <CallModal />
+      <PwaInstallBanner />
 
       {/* Spotlight search overlay */}
       <SearchOverlay 
@@ -133,11 +147,17 @@ function MainAppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <MainAppContent />
-      </SocketProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <SocketProvider>
+          <Routes>
+            <Route path="/events/public/:eventId" element={<PublicEvent />} />
+            <Route path="/otp-verify" element={<OTPVerify />} />
+            <Route path="*" element={<MainAppContent />} />
+          </Routes>
+        </SocketProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

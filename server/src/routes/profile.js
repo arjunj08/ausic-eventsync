@@ -8,6 +8,8 @@ import Team from '../models/Team.js';
 import Task from '../models/Task.js';
 import Expense from '../models/Expense.js';
 import Attendance from '../models/Attendance.js';
+import Meeting from '../models/Meeting.js';
+import Event from '../models/Event.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -125,6 +127,25 @@ router.get('/:userId', authMiddleware, async (req, res) => {
     // Trigger badge recalculation to ensure they are up to date
     const badges = await recalculateUserBadges(targetId);
 
+    // Calculate attendance ratios
+    const completedMeetings = await Meeting.find({ status: 'completed' });
+    const publishedEvents = await Event.find({ status: 'published' });
+    const checkIns = await Attendance.find({ userId: targetId });
+
+    const totalMeetings = completedMeetings.filter(m => 
+      m.attendees.some(att => String(att.userId) === String(targetId))
+    ).length;
+
+    const attendedMeetings = completedMeetings.filter(m => 
+      m.attendees.some(att => String(att.userId) === String(targetId) && att.status === 'present')
+    ).length;
+
+    const totalEvents = publishedEvents.length;
+    const attendedEvents = checkIns.length;
+
+    const meetingPercentage = totalMeetings > 0 ? Math.round((attendedMeetings / totalMeetings) * 100) : 100;
+    const eventPercentage = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 100;
+
     res.json({
       user: {
         id: userProfile._id,
@@ -141,7 +162,15 @@ router.get('/:userId', authMiddleware, async (req, res) => {
         emailNotifications: userProfile.emailNotifications || { taskAssigned: true, meetingScheduled: true, expenseUpdate: true, weeklyDigest: true },
         createdAt: userProfile.createdAt
       },
-      team: teamDetails
+      team: teamDetails,
+      attendance: {
+        attendedMeetings,
+        totalMeetings,
+        meetingPercentage,
+        attendedEvents,
+        totalEvents,
+        eventPercentage
+      }
     });
   } catch (error) {
     console.error('Fetch profile error:', error);

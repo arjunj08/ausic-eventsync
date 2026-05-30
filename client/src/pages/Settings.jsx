@@ -11,11 +11,70 @@ import {
   Trash2, 
   Check, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react';
 
 export default function Settings() {
   const { user, refreshUser } = useContext(AuthContext);
+
+  // 2FA Setup states
+  const [show2faSetup, setShow2faSetup] = useState(false);
+  const [twoFactorSetupCode, setTwoFactorSetupCode] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorStatusMsg, setTwoFactorStatusMsg] = useState('');
+  const [twoFactorErrorMsg, setTwoFactorErrorMsg] = useState('');
+
+  // Request 2FA setup OTP
+  const handleRequest2fa = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorStatusMsg('');
+    setTwoFactorErrorMsg('');
+    try {
+      await axios.post('/api/auth/request-2fa');
+      setShow2faSetup(true);
+      setTwoFactorStatusMsg('A setup code has been sent to your email.');
+    } catch (err) {
+      setTwoFactorErrorMsg(err.response?.data?.error || 'Failed to request 2FA setup code.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  // Verify and enable 2FA
+  const handleConfirm2fa = async (e) => {
+    e.preventDefault();
+    setTwoFactorLoading(true);
+    setTwoFactorStatusMsg('');
+    setTwoFactorErrorMsg('');
+    try {
+      await axios.patch('/api/auth/enable-2fa', { code: twoFactorSetupCode });
+      setTwoFactorStatusMsg('Two-Factor Authentication has been successfully enabled.');
+      setShow2faSetup(false);
+      setTwoFactorSetupCode('');
+      refreshUser();
+    } catch (err) {
+      setTwoFactorErrorMsg(err.response?.data?.error || 'Invalid or expired setup code.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  // Disable 2FA
+  const handleDisable2fa = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorStatusMsg('');
+    setTwoFactorErrorMsg('');
+    try {
+      await axios.patch('/api/auth/disable-2fa');
+      setTwoFactorStatusMsg('Two-Factor Authentication has been disabled.');
+      refreshUser();
+    } catch (err) {
+      setTwoFactorErrorMsg(err.response?.data?.error || 'Failed to disable 2FA.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
 
   // Toggle states
   const [notificationSound, setNotificationSound] = useState(true);
@@ -361,6 +420,93 @@ export default function Settings() {
               <Lock className="h-5 w-5 text-purple-400" />
               Security Setup
             </h2>
+
+            {/* Two-Factor Authentication (2FA) */}
+            <div className="mb-6 border-b border-gray-850 pb-6">
+              <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Shield className="h-4.5 w-4.5 text-[#00BFFF]" />
+                Two-Factor Authentication
+              </h3>
+              <p className="text-xs text-gray-400 mb-4 leading-relaxed font-medium">
+                Add an extra layer of security by requiring a 6-digit email OTP verification code at login.
+              </p>
+
+              {twoFactorStatusMsg && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-lg text-xs mb-3">
+                  {twoFactorStatusMsg}
+                </div>
+              )}
+
+              {twoFactorErrorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-xs mb-3">
+                  {twoFactorErrorMsg}
+                </div>
+              )}
+
+              {user?.twoFactorEnabled ? (
+                <div className="space-y-3">
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-lg text-xs font-semibold flex items-center gap-2">
+                    <Check className="h-4 w-4" />
+                    2FA Security Enabled
+                  </div>
+                  <button
+                    onClick={handleDisable2fa}
+                    disabled={twoFactorLoading}
+                    className="w-full bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {twoFactorLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Disable 2FA Security
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {!show2faSetup ? (
+                    <button
+                      onClick={handleRequest2fa}
+                      disabled={twoFactorLoading}
+                      className="w-full bg-[#00BFFF]/10 hover:bg-[#00BFFF] text-[#00BFFF] hover:text-black border border-[#00BFFF]/20 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {twoFactorLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Enable 2FA Security
+                    </button>
+                  ) : (
+                    <form onSubmit={handleConfirm2fa} className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Enter Setup Code</label>
+                        <input
+                          type="text"
+                          placeholder="6-digit OTP code"
+                          value={twoFactorSetupCode}
+                          onChange={(e) => setTwoFactorSetupCode(e.target.value)}
+                          className="w-full bg-[#1A1A1A] border border-gray-800 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#00BFFF]"
+                          required
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={twoFactorLoading}
+                          className="flex-1 bg-[#00BFFF] hover:bg-[#00D4FF] text-black py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          {twoFactorLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-black" />}
+                          Confirm Code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShow2faSetup(false);
+                            setTwoFactorSetupCode('');
+                          }}
+                          className="bg-[#2A2A2A] hover:bg-gray-750 text-gray-300 px-3 rounded-lg text-xs font-semibold cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
 
             <form onSubmit={handleChangePassword} className="space-y-4">
               {passwordSuccess && (

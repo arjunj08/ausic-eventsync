@@ -7,6 +7,8 @@ const EventSchema = new mongoose.Schema({
   imageUrl: { type: String, default: '' },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   teamIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
+  tags: [{ type: String }],
+  category: { type: String, enum: ['Technical', 'Cultural', 'Sports', 'Workshop', 'Other'], default: 'Other' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now }
 });

@@ -54,8 +54,11 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  // If user is Admin, insert Admin Dashboard and Squad Roles to secondary tools
+  // If user is Admin, insert Admin Dashboard, Squad Roles, and Attendance Report to secondary tools
   if (user && user.role === 'admin') {
+    if (!secondaryTools.some(t => t.id === 'attendance_report')) {
+      secondaryTools.unshift({ id: 'attendance_report', label: 'Attendance Audit', icon: ClipboardCheck });
+    }
     if (!secondaryTools.some(t => t.id === 'admin_members')) {
       secondaryTools.unshift({ id: 'admin_members', label: 'Squad Roles', icon: Users });
     }

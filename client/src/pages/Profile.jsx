@@ -57,6 +57,7 @@ export default function Profile({ setActiveTab }) {
   const [socialLinks, setSocialLinks] = useState({ linkedin: '', github: '', instagram: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [profileAttendance, setProfileAttendance] = useState(null);
 
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -68,6 +69,7 @@ export default function Profile({ setActiveTab }) {
       const u = res.data.user;
       setProfileUser(u);
       setProfileTeam(res.data.team);
+      setProfileAttendance(res.data.attendance);
       
       // Initialize edit fields
       setBio(u.bio || '');
@@ -272,6 +274,51 @@ export default function Profile({ setActiveTab }) {
               </div>
             )}
           </div>
+
+          {/* Attendance Ratio Card */}
+          {profileAttendance && (
+            <div className="bg-[#111111] p-6 rounded-xl border border-gray-850 space-y-4">
+              <h3 className="font-extrabold text-white text-sm tracking-wide uppercase border-b border-gray-850 pb-2">
+                My Attendance Ratio
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Meeting Ratio */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold text-gray-400">
+                    <span>Meeting Attendance</span>
+                    <span className="text-white font-bold">{profileAttendance.meetingPercentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-[#00BFFF] h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${profileAttendance.meetingPercentage}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-gray-550 text-right">
+                    Attended {profileAttendance.attendedMeetings} of {profileAttendance.totalMeetings} briefs
+                  </div>
+                </div>
+
+                {/* Event check-ins */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold text-gray-400">
+                    <span>Event Check-ins</span>
+                    <span className="text-white font-bold">{profileAttendance.eventPercentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-purple-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${profileAttendance.eventPercentage}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-gray-550 text-right">
+                    Checked into {profileAttendance.attendedEvents} of {profileAttendance.totalEvents} events
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Badges Container */}
           <div className="bg-[#111111] p-6 rounded-xl border border-gray-850 space-y-4">

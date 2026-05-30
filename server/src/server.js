@@ -27,6 +27,9 @@ import aiRoutes from './routes/ai.js';
 import meetingsRoutes from './routes/meetings.js';
 import searchRoutes from './routes/search.js';
 import usersRoutes from './routes/users.js';
+import commentsRoutes from './routes/comments.js';
+import mediaRoutes from './routes/media.js';
+import announcementsRoutes from './routes/announcements.js';
 import { initScheduler } from './cron.js';
 
 // Socket Handlers
@@ -74,6 +77,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/comments', commentsRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/announcements', announcementsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

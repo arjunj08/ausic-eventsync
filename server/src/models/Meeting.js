@@ -24,6 +24,14 @@ const MeetingSchema = new mongoose.Schema({
   status: { type: String, enum: ['scheduled', 'ongoing', 'completed'], default: 'scheduled' },
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', default: null },
   teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
+  agenda: [{
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    duration: { type: Number, default: 10 }, // in minutes
+    presenter: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'current', 'done'], default: 'pending' },
+    order: { type: Number, default: 0 }
+  }],
   createdAt: { type: Date, default: Date.now }
 });
 

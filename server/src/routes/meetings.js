@@ -303,4 +303,90 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
+// 8. Update Agenda Builder details (Organizer or Admin)
+router.patch('/:id/agenda', authMiddleware, async (req, res) => {
+  try {
+    const { agenda } = req.body; // Array of { title, description, duration, presenter, status, order }
+    if (!agenda || !Array.isArray(agenda)) {
+      return res.status(400).json({ error: 'Agenda list must be an array' });
+    }
+
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    // Permission check
+    if (req.user.role !== 'admin' && String(meeting.organizer) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Only the organizer or admin can modify the agenda' });
+    }
+
+    meeting.agenda = agenda;
+    await meeting.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`meeting_${meeting._id}_agenda_update`, meeting.agenda);
+    }
+
+    res.json(meeting);
+  } catch (error) {
+    console.error('Update agenda error:', error);
+    res.status(500).json({ error: 'Failed to update agenda' });
+  }
+});
+
+// 9. Update specific agenda item status / timer tick during meeting (Organizer or Admin)
+router.patch('/:id/agenda/:itemId/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body; // 'pending' | 'current' | 'done'
+    if (!status || !['pending', 'current', 'done'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid agenda item status' });
+    }
+
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    // Permission check
+    if (req.user.role !== 'admin' && String(meeting.organizer) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Only the organizer or admin can update agenda statuses' });
+    }
+
+    const item = meeting.agenda.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'Agenda item not found' });
+    }
+
+    item.status = status;
+    
+    // If setting one item to 'current', make sure all others set to 'current' are set to pending/done
+    if (status === 'current') {
+      meeting.agenda.forEach(i => {
+        if (String(i._id) !== String(item._id) && i.status === 'current') {
+          i.status = 'pending';
+        }
+      });
+    }
+
+    await meeting.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`meeting_${meeting._id}_agenda_update`, meeting.agenda);
+      io.emit(`meeting_${meeting._id}_agenda_status_change`, {
+        itemId: item._id,
+        status: item.status,
+        item
+      });
+    }
+
+    res.json(meeting);
+  } catch (error) {
+    console.error('Update agenda item status error:', error);
+    res.status(500).json({ error: 'Failed to update agenda item status' });
+  }
+});
+
 export default router;

@@ -1,9 +1,11 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Zap, Shield, User, Loader2, Key } from 'lucide-react';
 
 export default function Login() {
   const { login, register, landingRole, setLandingRole } = useContext(AuthContext);
+  const navigate = useNavigate();
   
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
@@ -21,7 +23,10 @@ export default function Login() {
       if (isRegister) {
         await register(name, email, password, landingRole);
       } else {
-        await login(email, password);
+        const res = await login(email, password);
+        if (res && res.twoFactorRequired) {
+          navigate('/otp-verify', { state: { email } });
+        }
       }
     } catch (err) {
       setError(err);
@@ -35,7 +40,10 @@ export default function Login() {
     setLoading(true);
     setLandingRole(role);
     try {
-      await login(presetEmail, presetPassword);
+      const res = await login(presetEmail, presetPassword);
+      if (res && res.twoFactorRequired) {
+        navigate('/otp-verify', { state: { email: presetEmail } });
+      }
     } catch (err) {
       setError(err);
     } finally {

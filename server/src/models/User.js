@@ -35,6 +35,9 @@ const UserSchema = new mongoose.Schema({
     expenseUpdate: { type: Boolean, default: true },
     weeklyDigest: { type: Boolean, default: true }
   },
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorOtp: { type: String, default: '' },
+  twoFactorOtpExpires: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
