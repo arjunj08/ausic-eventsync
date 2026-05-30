@@ -148,6 +148,7 @@ router.post('/assign-team', authMiddleware, adminOnly, async (req, res) => {
       }
 
       user.teamId = teamId;
+      user.isOnboarded = true;
       await user.save();
     } else {
       // Removing from team
@@ -346,7 +347,7 @@ router.post('/import-members', authMiddleware, adminOnly, upload.single('file'),
             subRole: member.subRole,
             teamId: member.teamId,
             avatar,
-            isOnboarded: false
+            isOnboarded: !!member.teamId
           });
 
           await user.save();

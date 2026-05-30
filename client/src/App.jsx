@@ -113,8 +113,8 @@ function MainAppContent() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
-      {/* Block and show onboarding if user profile is incomplete */}
-      {user && !user.isOnboarded && <Onboarding />}
+      {/* Block and show onboarding if user profile is incomplete and user is not in a team */}
+      {user && !user.isOnboarded && !user.teamId && <Onboarding />}
       
       {/* Active Top Banners */}
       <AnnouncementBanner />
