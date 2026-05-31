@@ -559,11 +559,11 @@ router.post('/google-login', async (req, res) => {
     }
     
     // Create JWT
-    const token = jwt.sign({ id: user._id, role: user.role, email: user.email, name: user.name }, JWT_SECRET, {
+    const jwtToken = jwt.sign({ id: user._id, role: user.role, email: user.email, name: user.name }, JWT_SECRET, {
       expiresIn: '7d'
     });
     
-    res.cookie('token', token, COOKIE_OPTIONS);
+    res.cookie('token', jwtToken, COOKIE_OPTIONS);
     
     res.json({
       message: 'Google login successful',
