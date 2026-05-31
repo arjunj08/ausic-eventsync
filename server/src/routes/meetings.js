@@ -2,6 +2,9 @@ import express from 'express';
 import Meeting from '../models/Meeting.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import ChatMessage from '../models/ChatMessage.js';
+import Event from '../models/Event.js';
+import Team from '../models/Team.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
 import { sendMeetingScheduledEmail } from '../services/emailService.js';
@@ -226,6 +229,61 @@ router.patch('/:id/attendance', authMiddleware, async (req, res) => {
     });
 
     await meeting.save();
+
+    // Automatically post the attendance report to appropriate team chat rooms
+    try {
+      const presentList = meeting.attendees.filter(a => a.status === 'present').map(a => a.userName);
+      const absentList = meeting.attendees.filter(a => a.status === 'absent').map(a => a.userName);
+      const pendingList = meeting.attendees.filter(a => !a.status || a.status === 'pending').map(a => a.userName);
+
+      let messageText = `⚡ **Meeting Attendance Logged**\n`;
+      messageText += `Meeting: **"${meeting.title}"**\n`;
+      messageText += `Platform: *${meeting.platform === 'gmeet' ? 'Google Meet' : 'Zoom'}*\n`;
+      messageText += `Recorded by: *${req.user.name}*\n\n`;
+      
+      if (presentList.length > 0) {
+        messageText += `✅ **Present (${presentList.length})**:\n${presentList.map(name => `- ${name}`).join('\n')}\n\n`;
+      }
+      if (absentList.length > 0) {
+        messageText += `❌ **Absent (${absentList.length})**:\n${absentList.map(name => `- ${name}`).join('\n')}\n\n`;
+      }
+      if (pendingList.length > 0) {
+        messageText += `⏳ **Pending (${pendingList.length})**:\n${pendingList.map(name => `- ${name}`).join('\n')}`;
+      }
+
+      // Determine target rooms
+      let targetRooms = [];
+      if (meeting.teamId) {
+        targetRooms.push(String(meeting.teamId));
+      } else if (meeting.eventId) {
+        const eventObj = await Event.findById(meeting.eventId);
+        if (eventObj && eventObj.teamIds) {
+          eventObj.teamIds.forEach(tId => targetRooms.push(String(tId)));
+        }
+      }
+      if (targetRooms.length === 0) {
+        const allTeams = await Team.find({});
+        allTeams.forEach(t => targetRooms.push(String(t._id)));
+      }
+
+      const io = req.app.get('io');
+      for (const roomId of targetRooms) {
+        const chatMsg = new ChatMessage({
+          roomId,
+          senderId: req.user.id,
+          senderName: 'System (Attendance Bot)',
+          message: messageText
+        });
+        await chatMsg.save();
+
+        if (io) {
+          io.to(roomId).emit('new-message', chatMsg);
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to post automatic attendance notification to chat:', notifErr);
+    }
+
     res.json(meeting);
   } catch (error) {
     console.error('Mark attendance error:', error);

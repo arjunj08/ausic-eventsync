@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { 
   Plus, 
+  X,
   Search, 
   Calendar, 
   User, 
@@ -106,7 +107,18 @@ export default function Kanban() {
   // Create Task
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!taskTitle.trim() || !taskTeamId || !taskEventId) return;
+    if (!taskTitle.trim()) {
+      alert('Task title is required');
+      return;
+    }
+    if (!taskTeamId) {
+      alert('Please select a squad');
+      return;
+    }
+    if (!taskEventId) {
+      alert('Please select an associated event');
+      return;
+    }
 
     try {
       const res = await axios.post('/api/tasks', {
@@ -132,6 +144,7 @@ export default function Kanban() {
       setTasks(tasksRes.data);
     } catch (err) {
       console.error('Create task error:', err);
+      alert(err.response?.data?.error || 'Failed to create task');
     }
   };
 
@@ -255,9 +268,9 @@ export default function Kanban() {
             )}
 
             {/* Delete button for Admin only */}
-            {user.role === 'admin' && (
+            {user?.role === 'admin' && (
               <button 
-                onClick={() => handleDeleteTask(task._id)}
+                onClick={() => handleDeleteTask(task._id || task.id)}
                 className="p-1 rounded bg-[#2A2A2A] hover:bg-red-500/20 text-gray-400 hover:text-red-400 ml-1.5"
                 title="Delete Task"
               >
@@ -284,7 +297,7 @@ export default function Kanban() {
           </p>
         </div>
 
-        {user.role === 'admin' && (
+        {user?.role === 'admin' && (
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-gradient-to-r from-[#00BFFF] to-[#8F5CFF] text-white font-extrabold px-5 py-3 rounded-lg hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
@@ -318,7 +331,7 @@ export default function Kanban() {
         >
           <option value="">All Events</option>
           {events.map(ev => (
-            <option key={ev._id} value={ev._id}>{ev.title}</option>
+            <option key={ev._id || ev.id} value={ev._id || ev.id}>{ev.title}</option>
           ))}
         </select>
 
@@ -330,7 +343,7 @@ export default function Kanban() {
         >
           <option value="">All Squads</option>
           {teams.map(t => (
-            <option key={t._id} value={t._id}>{t.name}</option>
+            <option key={t._id || t.id} value={t._id || t.id}>{t.name}</option>
           ))}
         </select>
 
@@ -461,7 +474,7 @@ export default function Kanban() {
                   >
                     <option value="">-- Choose Squad --</option>
                     {teams.map(t => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
+                      <option key={t._id || t.id} value={t._id || t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
@@ -476,7 +489,7 @@ export default function Kanban() {
                   >
                     <option value="">-- Choose Event --</option>
                     {events.map(ev => (
-                      <option key={ev._id} value={ev._id}>{ev.title}</option>
+                      <option key={ev._id || ev.id} value={ev._id || ev.id}>{ev.title}</option>
                     ))}
                   </select>
                 </div>
