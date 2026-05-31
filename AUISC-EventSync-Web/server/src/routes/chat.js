@@ -142,6 +142,53 @@ router.post('/ai', authMiddleware, async (req, res) => {
           io.emit(`meeting_${targetMeeting._id}_update`, targetMeeting);
         }
 
+        // Auto-post the updated attendance to appropriate team chat rooms
+        try {
+          const presentList = targetMeeting.attendees.filter(a => a.status === 'present').map(a => a.userName);
+          const absentList = targetMeeting.attendees.filter(a => a.status === 'absent').map(a => a.userName);
+
+          let messageText = `⚡ **Meeting Attendance Logged via Bot**\n`;
+          messageText += `Meeting: **"${targetMeeting.title}"**\n`;
+          messageText += `Updated: **${targetUser.name}** marked as **${status}** by *${user.name}*\n\n`;
+          
+          if (presentList.length > 0) {
+            messageText += `✅ **Present (${presentList.length})**:\n${presentList.map(name => `- ${name}`).join('\n')}\n\n`;
+          }
+          if (absentList.length > 0) {
+            messageText += `❌ **Absent (${absentList.length})**:\n${absentList.map(name => `- ${name}`).join('\n')}\n\n`;
+          }
+
+          let targetRooms = [];
+          if (targetMeeting.teamId) {
+            targetRooms.push(String(targetMeeting.teamId));
+          } else if (targetMeeting.eventId) {
+            const eventObj = await Event.findById(targetMeeting.eventId);
+            if (eventObj && eventObj.teamIds) {
+              eventObj.teamIds.forEach(tId => targetRooms.push(String(tId)));
+            }
+          }
+          if (targetRooms.length === 0) {
+            const allTeams = await Team.find({});
+            allTeams.forEach(t => targetRooms.push(String(t._id)));
+          }
+
+          for (const roomId of targetRooms) {
+            const chatMsg = new ChatMessage({
+              roomId,
+              senderId: req.user.id,
+              senderName: 'System (Attendance Bot)',
+              message: messageText
+            });
+            await chatMsg.save();
+
+            if (io) {
+              io.to(roomId).emit('new-message', chatMsg);
+            }
+          }
+        } catch (chatErr) {
+          console.error('Failed to post chatbot single update to rooms:', chatErr);
+        }
+
         return res.json({ 
           response: `⚡ **Attendance Logged**\n\nI have successfully marked **${targetUser.name}** as **${status}** for meeting **"${targetMeeting.title}"**.` 
         });
@@ -208,6 +255,53 @@ router.post('/ai', authMiddleware, async (req, res) => {
             const io = req.app.get('io');
             if (io) {
               io.emit(`meeting_${targetMeeting._id}_update`, targetMeeting);
+            }
+
+            // Auto-post the updated attendance to appropriate team chat rooms
+            try {
+              const presentList = targetMeeting.attendees.filter(a => a.status === 'present').map(a => a.userName);
+              const absentList = targetMeeting.attendees.filter(a => a.status === 'absent').map(a => a.userName);
+
+              let messageText = `⚡ **Meeting Attendance Logged via Bot**\n`;
+              messageText += `Meeting: **"${targetMeeting.title}"**\n`;
+              messageText += `Bulk Attendance Update by: *${user.name}*\n\n`;
+              
+              if (presentList.length > 0) {
+                messageText += `✅ **Present (${presentList.length})**:\n${presentList.map(name => `- ${name}`).join('\n')}\n\n`;
+              }
+              if (absentList.length > 0) {
+                messageText += `❌ **Absent (${absentList.length})**:\n${absentList.map(name => `- ${name}`).join('\n')}\n\n`;
+              }
+
+              let targetRooms = [];
+              if (targetMeeting.teamId) {
+                targetRooms.push(String(targetMeeting.teamId));
+              } else if (targetMeeting.eventId) {
+                const eventObj = await Event.findById(targetMeeting.eventId);
+                if (eventObj && eventObj.teamIds) {
+                  eventObj.teamIds.forEach(tId => targetRooms.push(String(tId)));
+                }
+              }
+              if (targetRooms.length === 0) {
+                const allTeams = await Team.find({});
+                allTeams.forEach(t => targetRooms.push(String(t._id)));
+              }
+
+              for (const roomId of targetRooms) {
+                const chatMsg = new ChatMessage({
+                  roomId,
+                  senderId: req.user.id,
+                  senderName: 'System (Attendance Bot)',
+                  message: messageText
+                });
+                await chatMsg.save();
+
+                if (io) {
+                  io.to(roomId).emit('new-message', chatMsg);
+                }
+              }
+            } catch (chatErr) {
+              console.error('Failed to post chatbot bulk update to rooms:', chatErr);
             }
 
             if (presentProcessed.length > 0) {
