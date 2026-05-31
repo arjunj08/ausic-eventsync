@@ -41,8 +41,22 @@ const app = express();
 const httpServer = createServer(app);
 
 // Enable CORS
+const clientUrl = process.env.CLIENT_URL;
+const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+if (clientUrl) {
+  allowedOrigins.push(clientUrl);
+  allowedOrigins.push(clientUrl.replace(/\/$/, '')); // remove trailing slash if any
+}
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'], // Vite dev servers
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    // Allow any Vercel preview domain as well as listed allowedOrigins
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true
 }));
 
@@ -100,7 +114,13 @@ app.use((err, req, res, next) => {
 // Socket.io Setup
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'), false);
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }
