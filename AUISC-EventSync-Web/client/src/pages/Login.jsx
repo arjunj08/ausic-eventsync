@@ -88,21 +88,6 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = async (presetEmail, presetPassword, role) => {
-    setError('');
-    setLoading(true);
-    setLandingRole(role);
-    try {
-      const res = await login(presetEmail, presetPassword);
-      if (res && res.twoFactorRequired) {
-        navigate('/otp-verify', { state: { email: presetEmail, mockOtp: res.otp } });
-      }
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col justify-center items-center px-6 py-12">
@@ -393,31 +378,6 @@ export default function Login() {
             {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
           </button>
         </div>
-
-        {/* Quick presets (highly convenient for sandbox testing) */}
-        {!isRegister && (
-          <div className="mt-8 border-t border-gray-850 pt-6">
-            <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center mb-3">Quick Presets</h5>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('member1@auisc.com', 'password123', 'member')}
-                className="bg-[#161616] hover:bg-[#202020] border border-gray-850 hover:border-gray-800 rounded-xl p-2.5 text-left transition-colors cursor-pointer"
-              >
-                <span className="block text-[11px] font-bold text-white">Sarah Chen</span>
-                <span className="block text-[9px] text-[#00BFFF] mt-0.5">Quick Member Login</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@auisc.com', 'password123', 'admin')}
-                className="bg-[#161616] hover:bg-[#202020] border border-gray-850 hover:border-gray-800 rounded-xl p-2.5 text-left transition-colors cursor-pointer"
-              >
-                <span className="block text-[11px] font-bold text-white">Admin User</span>
-                <span className="block text-[9px] text-[#7C3AED] mt-0.5">Quick Admin Login</span>
-              </button>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
