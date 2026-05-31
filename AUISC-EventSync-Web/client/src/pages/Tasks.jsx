@@ -49,10 +49,10 @@ export default function Tasks() {
       setTeams(teamsRes.data);
       setMembers(membersRes.data);
       if (eventsRes.data.length > 0) {
-        setSelectedEventId(eventsRes.data[0]._id);
+        setSelectedEventId(eventsRes.data[0]._id || eventsRes.data[0].id);
       }
       if (teamsRes.data.length > 0) {
-        setSelectedTeamId(teamsRes.data[0]._id);
+        setSelectedTeamId(teamsRes.data[0]._id || teamsRes.data[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -84,8 +84,8 @@ export default function Tasks() {
     setEditingTask(null);
     setTitle('');
     setDescription('');
-    setSelectedEventId(events[0]?._id || '');
-    setSelectedTeamId(teams[0]?._id || '');
+    setSelectedEventId(events[0]?._id || events[0]?.id || '');
+    setSelectedTeamId(teams[0]?._id || teams[0]?.id || '');
     setAssignedTo('');
     setIsModalOpen(true);
   };
@@ -94,9 +94,9 @@ export default function Tasks() {
     setEditingTask(task);
     setTitle(task.title);
     setDescription(task.description);
-    setSelectedEventId(task.eventId?._id || task.eventId || '');
-    setSelectedTeamId(task.teamId?._id || task.teamId || '');
-    setAssignedTo(task.assignedTo?._id || task.assignedTo || '');
+    setSelectedEventId(task.eventId?._id || task.eventId?.id || task.eventId || '');
+    setSelectedTeamId(task.teamId?._id || task.teamId?.id || task.teamId || '');
+    setAssignedTo(task.assignedTo?._id || task.assignedTo?.id || task.assignedTo || '');
     setIsModalOpen(true);
   };
 
@@ -332,7 +332,7 @@ export default function Tasks() {
                   >
                     <option value="" disabled>Select event</option>
                     {events.map(e => (
-                      <option key={e._id} value={e._id}>{e.title}</option>
+                      <option key={e._id || e.id} value={e._id || e.id}>{e.title}</option>
                     ))}
                   </select>
                 </div>
@@ -349,7 +349,7 @@ export default function Tasks() {
                   >
                     <option value="" disabled>Select team</option>
                     {teams.map(t => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
+                      <option key={t._id || t.id} value={t._id || t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
@@ -367,7 +367,7 @@ export default function Tasks() {
                 >
                   <option value="">Unassigned (Open task)</option>
                   {filteredMembers.map(m => (
-                    <option key={m._id} value={m._id}>{m.name} ({m.role})</option>
+                    <option key={m._id || m.id} value={m._id || m.id}>{m.name} ({m.role})</option>
                   ))}
                 </select>
               </div>
