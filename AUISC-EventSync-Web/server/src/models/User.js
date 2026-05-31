@@ -1,59 +1,44 @@
-const mongoose = require('mongoose');
-const bcryptjs = require('bcryptjs');
+import mongoose from 'mongoose';
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Please provide a name'],
-    trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, enum: ['member', 'admin'], default: 'member' },
+  subRole: { type: String, enum: ['team_lead', 'treasurer', 'coordinator', 'member'], default: 'member' },
+  isOnboarded: { type: Boolean, default: false },
+  yearOfStudy: { type: String, default: '' },
+  department: { type: String, default: '' },
+  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
+  avatar: { type: String, default: '' },
+  bio: { type: String, default: '' },
+  skills: [{ type: String }],
+  badges: [{
+    name: { type: String },
+    icon: { type: String },
+    earnedAt: { type: Date, default: Date.now }
+  }],
+  socialLinks: {
+    linkedin: { type: String, default: '' },
+    github: { type: String, default: '' },
+    instagram: { type: String, default: '' }
   },
-  email: {
-    type: String,
-    required: [true, 'Please provide an email'],
-    unique: true,
-    lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
+  teamRole: { type: String, default: '' }, // e.g. "Squad Developer", "Media Lead"
+  settings: {
+    notificationSound: { type: Boolean, default: true },
+    emailAlerts: { type: Boolean, default: true },
+    aiPersona: { type: String, default: 'helpful' } // helpful, technical, direct
   },
-  passwordHash: {
-    type: String,
-    required: [true, 'Please provide a password'],
-    minlength: 6,
-    select: false
+  emailNotifications: {
+    taskAssigned: { type: Boolean, default: true },
+    meetingScheduled: { type: Boolean, default: true },
+    expenseUpdate: { type: Boolean, default: true },
+    weeklyDigest: { type: Boolean, default: true }
   },
-  role: {
-    type: String,
-    enum: ['admin', 'member'],
-    default: 'member'
-  },
-  avatar: {
-    type: String,
-    default: null
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorOtp: { type: String, default: '' },
+  twoFactorOtpExpires: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) {
-    return next();
-  }
-  
-  try {
-    const salt = await bcryptjs.genSalt(10);
-    this.passwordHash = await bcryptjs.hash(this.passwordHash, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Method to compare passwords
-userSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcryptjs.compare(enteredPassword, this.passwordHash);
-};
-
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', UserSchema);

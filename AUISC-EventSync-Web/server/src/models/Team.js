@@ -1,32 +1,11 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const teamSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Please provide a team name'],
-    trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
-  },
-  color: {
-    type: String,
-    required: [true, 'Please provide a team color'],
-    enum: ['blue', 'orange', 'purple', 'green', 'red', 'pink', 'yellow']
-  },
-  memberIds: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  ],
-  eventId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Event',
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+const TeamSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  color: { type: String, default: '#7C3AED' }, // default purple
+  memberIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', default: null },
+  createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Team', teamSchema);
+export default mongoose.model('Team', TeamSchema);

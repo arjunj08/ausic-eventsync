@@ -1,43 +1,30 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import { config } from '../config/config.js';
 
-exports.protect = async (req, res, next) => {
+export const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+
   try {
-    let token;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    }
-
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
-
-    if (!req.user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
+    const decoded = jwt.verify(token, config.JWT_SECRET);
+    req.userId = decoded.id;
+    req.userRole = decoded.role;
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
 
-exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ success: false, message: 'Access denied. Admin role required.' });
+export const verifyAdmin = (req, res, next) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
 
-exports.isMember = (req, res, next) => {
-  if (req.user.role !== 'member' && req.user.role !== 'admin') {
-    return res.status(403).json({ success: false, message: 'Access denied. Member role required.' });
+export const verifyTeamLead = (req, res, next) => {
+  if (req.userRole !== 'team_lead' && req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Team lead or admin access required' });
   }
   next();
 };

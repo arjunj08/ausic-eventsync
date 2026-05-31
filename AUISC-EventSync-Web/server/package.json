@@ -1,32 +1,39 @@
 {
-  "name": "server",
+  "name": "auisc-eventsync-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "AUISC EventSync Backend API",
+  "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "node src/server.js",
     "start": "node src/server.js",
-    "seed": "node seed.js",
+    "dev": "nodemon src/server.js",
+    "seed": "node src/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": [
+    "events",
+    "teams",
+    "collaboration"
+  ],
+  "author": "AUISC",
+  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
-    "jspdf": "^4.2.1",
-    "mongoose": "^9.6.3",
-    "multer": "^2.1.1",
-    "papaparse": "^5.5.3",
-    "socket.io": "^4.8.3"
+    "@anthropic-ai/sdk": "^0.100.1",
+    "axios": "^1.3.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.0.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.10",
+    "socket.io": "^4.6.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^2.0.22"
   }
 }

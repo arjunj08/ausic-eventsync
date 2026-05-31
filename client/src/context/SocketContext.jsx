@@ -46,7 +46,9 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const socketUrl = 'http://localhost:5000';
+    const devURL = 'http://localhost:5000';
+    const prodURL = 'https://eventsync-backend.onrender.com';
+    const socketUrl = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? devURL : prodURL);
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling']

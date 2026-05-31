@@ -6,6 +6,7 @@ import Team from '../models/Team.js';
 import Event from '../models/Event.js';
 import Task from '../models/Task.js';
 import Expense from '../models/Expense.js';
+import Meeting from '../models/Meeting.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -93,6 +94,139 @@ router.post('/ai', authMiddleware, async (req, res) => {
 
     // Retrieve user data for context
     const user = await User.findById(req.user.id);
+    const query = message.toLowerCase().trim();
+
+    // ONLY ADMINS can record/enter attendance
+    if (user.role === 'admin' && (query.includes('attendance') || query.includes('mark'))) {
+      
+      // Pattern 1: Single user attendance checking
+      // e.g. "mark Sarah Chen present for meeting Project Sync"
+      const singleMatch = message.match(/(?:mark|set)\s+(.+?)\s+(?:as\s+)?(present|absent)\s+(?:for|in|meeting|for meeting|in meeting)\s+(.+)/i);
+      
+      if (singleMatch) {
+        const userNameInput = singleMatch[1].trim();
+        const status = singleMatch[2].toLowerCase().trim();
+        let meetingTitleInput = singleMatch[3].trim();
+        
+        // Strip leading "meeting" word if present in title input
+        meetingTitleInput = meetingTitleInput.replace(/^meeting\s+/i, '').trim();
+
+        // Search for user
+        const targetUser = await User.findOne({ name: { $regex: new RegExp(`^${userNameInput}$`, 'i') } });
+        // Search for meeting (case-insensitive regex match)
+        const targetMeeting = await Meeting.findOne({ title: { $regex: new RegExp(meetingTitleInput, 'i') } });
+
+        if (!targetUser) {
+          return res.json({ response: `I couldn't find a member named "${userNameInput}".` });
+        }
+        if (!targetMeeting) {
+          return res.json({ response: `I couldn't find a meeting matching "${meetingTitleInput}".` });
+        }
+
+        // Update targetMeeting attendees status
+        const attendeeIdx = targetMeeting.attendees.findIndex(a => String(a.userId) === String(targetUser._id));
+        if (attendeeIdx > -1) {
+          targetMeeting.attendees[attendeeIdx].status = status;
+        } else {
+          targetMeeting.attendees.push({
+            userId: targetUser._id,
+            userName: targetUser.name,
+            status: status
+          });
+        }
+        await targetMeeting.save();
+
+        // Trigger Socket.io update to refresh screen components
+        const io = req.app.get('io');
+        if (io) {
+          io.emit(`meeting_${targetMeeting._id}_update`, targetMeeting);
+        }
+
+        return res.json({ 
+          response: `⚡ **Attendance Logged**\n\nI have successfully marked **${targetUser.name}** as **${status}** for meeting **"${targetMeeting.title}"**.` 
+        });
+      }
+
+      // Pattern 2: Bulk attendance entry
+      // e.g. "attendance for Project Sync: present: Sarah Chen, Alex Mercer; absent: Admin User"
+      if (query.includes('present') || query.includes('absent')) {
+        let meetingPart = '';
+        let presentPart = '';
+        let absentPart = '';
+
+        const cleanMsg = message.replace(/^attendance\s*(?:for|:)?\s*/i, '').trim();
+        const firstKeywordIdx = cleanMsg.search(/present:|absent:/i);
+        if (firstKeywordIdx > -1) {
+          meetingPart = cleanMsg.substring(0, firstKeywordIdx).replace(/[-:,;]$/, '').trim();
+          
+          const rest = cleanMsg.substring(firstKeywordIdx);
+          
+          const presentMatch = rest.match(/present:\s*([^;]+)/i);
+          if (presentMatch) {
+            presentPart = presentMatch[1].trim();
+          }
+          
+          const absentMatch = rest.match(/absent:\s*([^;]+)/i);
+          if (absentMatch) {
+            absentPart = absentMatch[1].trim();
+          }
+        }
+
+        if (meetingPart) {
+          const targetMeeting = await Meeting.findOne({ title: { $regex: new RegExp(meetingPart, 'i') } });
+          if (targetMeeting) {
+            let responseLines = [`⚡ **Bulk Attendance Logged for "${targetMeeting.title}"**`];
+            
+            const updateNames = async (namesString, statusVal) => {
+              if (!namesString) return [];
+              const names = namesString.split(/[,;]/).map(n => n.trim()).filter(Boolean);
+              const processed = [];
+              for (const name of names) {
+                const u = await User.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+                if (u) {
+                  const idx = targetMeeting.attendees.findIndex(a => String(a.userId) === String(u._id));
+                  if (idx > -1) {
+                    targetMeeting.attendees[idx].status = statusVal;
+                  } else {
+                    targetMeeting.attendees.push({
+                      userId: u._id,
+                      userName: u.name,
+                      status: statusVal
+                    });
+                  }
+                  processed.push(u.name);
+                }
+              }
+              return processed;
+            };
+
+            const presentProcessed = await updateNames(presentPart, 'present');
+            const absentProcessed = await updateNames(absentPart, 'absent');
+
+            await targetMeeting.save();
+
+            const io = req.app.get('io');
+            if (io) {
+              io.emit(`meeting_${targetMeeting._id}_update`, targetMeeting);
+            }
+
+            if (presentProcessed.length > 0) {
+              responseLines.push(`✅ **Present**: ${presentProcessed.join(', ')}`);
+            }
+            if (absentProcessed.length > 0) {
+              responseLines.push(`❌ **Absent**: ${absentProcessed.join(', ')}`);
+            }
+            if (presentProcessed.length === 0 && absentProcessed.length === 0) {
+              responseLines.push(`⚠️ No matching user names found in database for present/absent lists.`);
+            }
+
+            return res.json({ response: responseLines.join('\n') });
+          } else {
+            return res.json({ response: `Could not find a meeting matching "${meetingPart}".` });
+          }
+        }
+      }
+    }
     const tasks = await Task.find({ assignedTo: req.user.id }).populate('teamId', 'name');
     const events = await Event.find({ status: 'published' });
     const expenses = await Expense.find({ submittedBy: req.user.id });
@@ -193,7 +327,6 @@ router.post('/ai', authMiddleware, async (req, res) => {
     }
 
     // Fallback: Smart local rule-based database parser
-    const query = message.toLowerCase();
     let responseText = '';
 
     if (query.includes('task')) {

@@ -2,7 +2,8 @@ import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 // Configure Axios globally
-axios.defaults.baseURL = 'http://localhost:5000';
+const devURL = 'http://localhost:5000';
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? devURL : '');
 axios.defaults.withCredentials = true; // Required to send cookies
 
 export const AuthContext = createContext();
@@ -55,6 +56,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (name, email, avatar) => {
+    try {
+      const res = await axios.post('/api/auth/google-login', { name, email, avatar });
+      await fetchCurrentUser();
+      return res.data;
+    } catch (err) {
+      throw err.response?.data?.error || 'Google login failed.';
+    }
+  };
+
   const logout = async () => {
     try {
       await axios.post('/api/auth/logout');
@@ -74,6 +85,7 @@ export const AuthProvider = ({ children }) => {
       setLandingRole,
       login,
       register,
+      loginWithGoogle,
       logout,
       refreshUser: fetchCurrentUser
     }}>

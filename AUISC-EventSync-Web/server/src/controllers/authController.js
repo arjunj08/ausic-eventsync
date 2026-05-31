@@ -1,134 +1,57 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import { config } from '../config/config.js';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '7d'
-  });
-};
-
-exports.register = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+    
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Email already registered' });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide all required fields' });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ name, email, password: hashedPassword });
+    await user.save();
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      passwordHash: password,
-      role: role || 'member'
-    });
-
-    const token = generateToken(user._id);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token
-      }
-    });
+    res.status(201).json({ message: 'User registered successfully', user: { id: user._id, name, email } });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.login = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password' });
-    }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const user = await User.findOne({ email }).select('+passwordHash');
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    const token = generateToken(user._id);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token
-      }
-    });
+    const token = jwt.sign({ id: user._id, role: user.role }, config.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user._id, name: user.name, email, role: user.role } });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.getUser = async (req, res) => {
+export const getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        createdAt: user.createdAt
-      }
-    });
+    const user = await User.findById(req.userId).select('-password');
+    res.json(user);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.updateUser = async (req, res) => {
+export const updateUser = async (req, res) => {
   try {
     const { name, avatar } = req.body;
-    const updateData = {};
-
-    if (name) updateData.name = name;
-    if (avatar) updateData.avatar = avatar;
-
-    const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true, runValidators: true });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        createdAt: user.createdAt
-      }
-    });
+    const user = await User.findByIdAndUpdate(req.userId, { name, avatar, updatedAt: Date.now() }, { new: true }).select('-password');
+    res.json(user);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };

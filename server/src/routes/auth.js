@@ -50,6 +50,25 @@ router.post('/register', async (req, res) => {
 
     await user.save();
 
+    // Send welcome congrats email
+    try {
+      await sendEmail(
+        user.email,
+        'Welcome to AUISC EventSync (EventBridge)',
+        '🎉 Congrats for Joining AUISC EventSync!',
+        `
+          <p>Hi ${user.name},</p>
+          <p>Congratulations on joining <strong>AUISC EventSync (EventBridge)</strong>! We are thrilled to have you as part of our club workspace.</p>
+          <p>You can now collaborate with your squad, update tasks, submit event receipts, and participate in WebRTC video calls.</p>
+          <p>Click below to complete your onboarding profile interest details and get assigned to your squad team.</p>
+        `,
+        'Get Started',
+        'http://localhost:5173'
+      );
+    } catch (emailErr) {
+      console.error('Welcome email error:', emailErr);
+    }
+
     // Notify all admins
     try {
       const admins = await User.find({ role: 'admin' });
@@ -150,6 +169,7 @@ router.post('/login', async (req, res) => {
       return res.json({
         twoFactorRequired: true,
         email: user.email,
+        otp: (process.env.EMAIL_USER && process.env.EMAIL_PASS) ? undefined : otp,
         message: 'Two-factor verification code sent to your email.'
       });
     }
@@ -436,10 +456,112 @@ router.post('/resend-otp', async (req, res) => {
       'http://localhost:5173/otp-verify'
     );
 
-    res.json({ message: 'Two-factor verification code resent to your email.' });
+    res.json({ 
+      message: 'Two-factor verification code resent to your email.',
+      otp: (process.env.EMAIL_USER && process.env.EMAIL_PASS) ? undefined : otp
+    });
   } catch (error) {
     console.error('Resend OTP error:', error);
     res.status(500).json({ error: 'Failed to resend verification code' });
+  }
+});
+
+// Google Login / Signup (authenticated or auto-created)
+router.post('/google-login', async (req, res) => {
+  try {
+    const { email, name, avatar } = req.body;
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Google authentication details incomplete' });
+    }
+    
+    let user = await User.findOne({ email });
+    let isNewUser = false;
+    
+    if (!user) {
+      isNewUser = true;
+      // Auto-create user if they don't exist yet (Google sign-up)
+      const tempPassword = Math.random().toString(36).slice(-10);
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      user = new User({
+        name,
+        email: email.toLowerCase().trim(),
+        passwordHash,
+        role: 'member',
+        subRole: 'member',
+        isOnboarded: false, // will go to onboarding interest selection
+        avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=7c3aed`,
+      });
+      await user.save();
+
+      // Send welcome congrats email
+      try {
+        await sendEmail(
+          user.email,
+          'Welcome to AUISC EventSync (EventBridge)',
+          '🎉 Congrats for Joining AUISC EventSync!',
+          `
+            <p>Hi ${user.name},</p>
+            <p>Congratulations on joining <strong>AUISC EventSync (EventBridge)</strong>! We are thrilled to have you as part of our club workspace.</p>
+            <p>You can now collaborate with your squad, update tasks, submit event receipts, and participate in WebRTC video calls.</p>
+            <p>Click below to complete your onboarding profile interest details and get assigned to your squad team.</p>
+          `,
+          'Get Started',
+          'http://localhost:5173'
+        );
+      } catch (emailErr) {
+        console.error('Welcome email error:', emailErr);
+      }
+
+      // Notify admins
+      try {
+        const admins = await User.find({ role: 'admin' });
+        for (const admin of admins) {
+          const notif = new Notification({
+            userId: admin._id,
+            type: 'new_member',
+            message: `New member registered via Google: ${user.name} (${user.email}). Assign them to a team!`,
+            read: false
+          });
+          await notif.save();
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('new-member-registered', {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          });
+        }
+      } catch (err) {
+        console.error('Admin notify error:', err);
+      }
+    }
+    
+    // Create JWT
+    const token = jwt.sign({ id: user._id, role: user.role, email: user.email, name: user.name }, JWT_SECRET, {
+      expiresIn: '7d'
+    });
+    
+    res.cookie('token', token, COOKIE_OPTIONS);
+    
+    res.json({
+      message: 'Google login successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        subRole: user.subRole,
+        isOnboarded: user.isOnboarded,
+        teamId: user.teamId,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ error: 'Server error during Google authentication' });
   }
 });
 

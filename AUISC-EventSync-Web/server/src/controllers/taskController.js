@@ -1,157 +1,68 @@
-const Team = require('../models/Team');
-const Event = require('../models/Event');
+import Task from '../models/Task.js';
 
-exports.getAllTeams = async (req, res) => {
+export const createTask = async (req, res) => {
   try {
-    const teams = await Team.find().populate('memberIds', 'name email').populate('eventId');
-    res.status(200).json({ success: true, data: teams });
+    const { title, description, assignedTo, teamId, priority, dueDate } = req.body;
+    const task = new Task({ title, description, assignedTo, teamId, priority, dueDate });
+    await task.save();
+    res.status(201).json(task);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.getTeamById = async (req, res) => {
+export const getTasks = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id)
-      .populate('memberIds', 'name email')
-      .populate('eventId');
-
-    if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
-    }
-
-    res.status(200).json({ success: true, data: team });
+    const tasks = await Task.find().populate('assignedTo', 'name email').populate('teamId', 'name');
+    res.json(tasks);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.createTeam = async (req, res) => {
+export const getTasksByTeam = async (req, res) => {
   try {
-    const { name, color, eventId } = req.body;
-
-    if (!name || !color || !eventId) {
-      return res.status(400).json({ success: false, message: 'Please provide all required fields' });
-    }
-
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ success: false, message: 'Event not found' });
-    }
-
-    const team = await Team.create({
-      name,
-      color,
-      eventId,
-      memberIds: [req.user._id]
-    });
-
-    event.teamIds.push(team._id);
-    await event.save();
-
-    const populatedTeam = await team.populate('memberIds', 'name email');
-
-    res.status(201).json({ success: true, data: populatedTeam });
+    const tasks = await Task.find({ teamId: req.params.teamId }).populate('assignedTo', 'name email');
+    res.json(tasks);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.updateTeam = async (req, res) => {
+export const getTasksByUser = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
-
-    if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
-    }
-
-    const { name, color } = req.body;
-
-    if (name) team.name = name;
-    if (color) team.color = color;
-
-    await team.save();
-
-    const populatedTeam = await Team.findById(team._id).populate('memberIds', 'name email');
-
-    res.status(200).json({ success: true, data: populatedTeam });
+    const tasks = await Task.find({ assignedTo: req.userId }).populate('teamId', 'name');
+    res.json(tasks);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.deleteTeam = async (req, res) => {
+export const updateTaskStatus = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
-
-    if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
-    }
-
-    const event = await Event.findById(team.eventId);
-    if (event) {
-      event.teamIds = event.teamIds.filter(id => id.toString() !== team._id.toString());
-      await event.save();
-    }
-
-    await Team.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({ success: true, message: 'Team deleted successfully' });
+    const { status } = req.body;
+    const task = await Task.findByIdAndUpdate(req.params.id, { status, updatedAt: Date.now() }, { new: true });
+    res.json(task);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.addMember = async (req, res) => {
+export const updateTask = async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'Please provide a user ID' });
-    }
-
-    const team = await Team.findById(req.params.id);
-
-    if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
-    }
-
-    if (team.memberIds.includes(userId)) {
-      return res.status(400).json({ success: false, message: 'User is already a member' });
-    }
-
-    team.memberIds.push(userId);
-    await team.save();
-
-    const populatedTeam = await Team.findById(team._id).populate('memberIds', 'name email');
-
-    res.status(200).json({ success: true, data: populatedTeam });
+    const { title, description, priority, dueDate } = req.body;
+    const task = await Task.findByIdAndUpdate(req.params.id, { title, description, priority, dueDate, updatedAt: Date.now() }, { new: true });
+    res.json(task);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.removeMember = async (req, res) => {
+export const deleteTask = async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'Please provide a user ID' });
-    }
-
-    const team = await Team.findById(req.params.id);
-
-    if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
-    }
-
-    team.memberIds = team.memberIds.filter(id => id.toString() !== userId);
-    await team.save();
-
-    const populatedTeam = await Team.findById(team._id).populate('memberIds', 'name email');
-
-    res.status(200).json({ success: true, data: populatedTeam });
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
