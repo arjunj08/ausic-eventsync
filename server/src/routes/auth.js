@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 import User from '../models/User.js';
 import Team from '../models/Team.js';
 import Notification from '../models/Notification.js';
