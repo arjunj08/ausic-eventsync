@@ -485,8 +485,9 @@ router.post('/google-login', async (req, res) => {
           return res.status(400).json({ error: 'Invalid Google ID token payload' });
         }
       } catch (verifyErr) {
-        console.error('Google token verification failed:', verifyErr.message);
-        return res.status(400).json({ error: 'Google ID token verification failed' });
+        console.error('Google token verification failed:', verifyErr.response?.data || verifyErr.message);
+        const detail = verifyErr.response?.data?.error_description || verifyErr.message;
+        return res.status(400).json({ error: `Google token validation failed: ${detail}` });
       }
     }
 
