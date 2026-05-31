@@ -19,6 +19,54 @@ export default function Login() {
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
 
+  // Official Google Identity Services loading
+  React.useEffect(() => {
+    const id = 'google-gsi-client';
+    if (!document.getElementById(id)) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.id = id;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => initializeGoogleSignIn();
+      document.body.appendChild(script);
+    } else if (window.google) {
+      initializeGoogleSignIn();
+    }
+  }, []);
+
+  const initializeGoogleSignIn = () => {
+    if (window.google) {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleLoginResponse
+      });
+      
+      const btnContainer = document.getElementById("googleSignInButton");
+      if (btnContainer) {
+        window.google.accounts.id.renderButton(
+          btnContainer,
+          { theme: "filled_dark", size: "large", width: "382" }
+        );
+      }
+    }
+  };
+
+  const handleGoogleLoginResponse = async (response) => {
+    setLoading(true);
+    setError('');
+    try {
+      await loginWithGoogle(null, null, null, response.credential);
+      navigate('/');
+    } catch (err) {
+      console.error('Official Google login failed:', err);
+      setError(err || 'Google token verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -183,20 +231,20 @@ export default function Login() {
             <div className="flex-grow border-t border-gray-850"></div>
           </div>
 
-          {/* Google Sign-in Button */}
-          <button
-            type="button"
-            onClick={() => setShowGoogleModal(true)}
-            className="w-full h-11 bg-[#1a1a1a] hover:bg-[#222] border border-gray-800 hover:border-gray-700 text-white font-semibold rounded-lg text-sm transition-all cursor-pointer flex items-center justify-center gap-2.5"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21.35,11.1H12v2.7h5.38c-0.24,1.28 -0.96,2.37 -2.04,3.1v2.58h3.3c1.93,-1.78 3.04,-4.4 3.04,-7.38c0,-0.74 -0.07,-1.45 -0.21,-2.1" fill="#4285F4" />
-              <path d="M12,20.7c2.43,0 4.47,-0.8 5.96,-2.18l-3.3,-2.58c-0.91,0.61 -2.07,0.98 -3.3,0.98c-2.34,0 -4.33,-1.58 -5.04,-3.71H2.92v2.66c1.49,2.96 4.54,4.83 8.08,4.83" fill="#34A853" />
-              <path d="M6.96,13.21a5.81,5.81 0 0 1 0,-3.42V7.13H2.92a9.92,9.92 0 0 0 0,8.74l4.04,-2.66" fill="#FBBC05" />
-              <path d="M12,7.3c1.32,0 2.51,0.45 3.44,1.35l2.58,-2.58C16.46,4.68 14.42,3.9 12,3.9c-3.54,0 -6.59,1.87 -8.08,4.83l4.04,2.66c0.71,-2.13 2.7,-3.71 5.04,-3.71" fill="#EA4335" />
-            </svg>
-            <span>Sign in with Google</span>
-          </button>
+          {/* Official Google Sign-in API Button */}
+          <div className="w-full flex justify-center overflow-hidden rounded-lg mt-2">
+            <div id="googleSignInButton" className="w-full"></div>
+          </div>
+
+          <div className="text-center mt-2">
+            <button
+              type="button"
+              onClick={() => setShowGoogleModal(true)}
+              className="text-[10px] text-gray-550 hover:text-[#00BFFF] transition-all cursor-pointer font-bold uppercase tracking-wider"
+            >
+              ⚡ Use Developer Mock Accounts
+            </button>
+          </div>
         </form>
 
         {/* Mock Google OAuth Popup */}

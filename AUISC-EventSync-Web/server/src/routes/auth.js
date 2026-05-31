@@ -469,7 +469,26 @@ router.post('/resend-otp', async (req, res) => {
 // Google Login / Signup (authenticated or auto-created)
 router.post('/google-login', async (req, res) => {
   try {
-    const { email, name, avatar } = req.body;
+    let { email, name, avatar, token } = req.body;
+
+    // Verify Google ID Token if present (Real login)
+    if (token) {
+      try {
+        const verifyRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+        const payload = verifyRes.data;
+        if (payload.email) {
+          email = payload.email;
+          name = payload.name || payload.given_name || email.split('@')[0];
+          avatar = payload.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=7c3aed`;
+        } else {
+          return res.status(400).json({ error: 'Invalid Google ID token payload' });
+        }
+      } catch (verifyErr) {
+        console.error('Google token verification failed:', verifyErr.message);
+        return res.status(400).json({ error: 'Google ID token verification failed' });
+      }
+    }
+
     if (!email || !name) {
       return res.status(400).json({ error: 'Google authentication details incomplete' });
     }

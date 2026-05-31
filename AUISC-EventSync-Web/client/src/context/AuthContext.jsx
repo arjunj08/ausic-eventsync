@@ -56,9 +56,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = async (name, email, avatar) => {
+  const loginWithGoogle = async (name, email, avatar, token) => {
     try {
-      const res = await axios.post('/api/auth/google-login', { name, email, avatar });
+      const res = await axios.post('/api/auth/google-login', { name, email, avatar, token });
       await fetchCurrentUser();
       return res.data;
     } catch (err) {
