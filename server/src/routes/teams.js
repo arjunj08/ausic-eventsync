@@ -3,6 +3,7 @@ import Team from '../models/Team.js';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
+import { assignUserToTeam, unassignUserFromTeam } from './users.js';
 
 const router = express.Router();
 
@@ -133,6 +134,32 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete team' });
+  }
+});
+
+// Add member to team (POST /api/teams/:teamId/add-member)
+router.post('/:teamId/add-member', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    const user = await assignUserToTeam(userId, req.params.teamId, req);
+    res.json({ message: 'Member added to team successfully', user });
+  } catch (error) {
+    console.error('Add team member error:', error);
+    res.status(500).json({ error: error.message || 'Failed to add member to team' });
+  }
+});
+
+// Remove member from team (DELETE /api/teams/:teamId/remove-member/:userId)
+router.delete('/:teamId/remove-member/:userId', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await unassignUserFromTeam(req.params.userId, req);
+    res.json({ message: 'Member removed from team successfully', user });
+  } catch (error) {
+    console.error('Remove team member error:', error);
+    res.status(500).json({ error: error.message || 'Failed to remove member from team' });
   }
 });
 

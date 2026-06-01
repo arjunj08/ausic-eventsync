@@ -5,7 +5,7 @@ const EventSchema = new mongoose.Schema({
   description: { type: String, required: true },
   date: { type: Date, required: true },
   imageUrl: { type: String, default: '' },
-  status: { type: String, enum: ['draft', 'published'], default: 'draft' },
+  status: { type: String, enum: ['draft', 'pending_approval', 'published', 'changes_requested'], default: 'draft' },
   teamIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
   tags: [{ type: String }],
   category: { type: String, enum: ['Technical', 'Cultural', 'Sports', 'Workshop', 'Other'], default: 'Other' },

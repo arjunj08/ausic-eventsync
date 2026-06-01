@@ -7,6 +7,7 @@ import PublicRSVP from '../models/PublicRSVP.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const router = express.Router();
 router.get('/', authMiddleware, async (req, res) => {
   try {
     let query = {};
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'faculty') {
       query.status = 'published';
     }
     
@@ -42,7 +43,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    if (event.status !== 'published' && req.user.role !== 'admin') {
+    if (event.status !== 'published' && req.user.role !== 'admin' && req.user.role !== 'faculty') {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -92,7 +93,7 @@ router.post('/', authMiddleware, adminOnly, upload.single('image'), async (req, 
       description,
       date: new Date(date),
       imageUrl,
-      status: status || 'draft',
+      status: status || 'pending_approval',
       teamIds: parsedTeamIds,
       tags: parsedTags,
       category: category || 'Other',
@@ -100,6 +101,8 @@ router.post('/', authMiddleware, adminOnly, upload.single('image'), async (req, 
     });
 
     await event.save();
+
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'create_event', 'event', `Created event: "${event.title}"`, { eventId: event._id });
 
     // If published, notify users and link teams to the event
     if (event.status === 'published') {

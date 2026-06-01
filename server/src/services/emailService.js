@@ -319,3 +319,31 @@ export const sendWeeklyDigestEmail = async (user, pendingTasks, upcomingEvents, 
 
   return sendEmail(user.email, subject, title, body, 'Open Dashboard', 'http://localhost:5173');
 };
+
+// 6. Faculty Weekly Digest Email
+export const sendFacultyWeeklyDigestEmail = async (facultyUser, upcomingEvents, pendingApprovalsCount, taskCompletionRate) => {
+  const subject = `📋 Weekly Advisor Digest — AUISC EventSync`;
+  const title = `📋 Faculty Weekly Summary`;
+
+  let eventsHtml = upcomingEvents.length === 0
+    ? '<p style="font-size: 13px; color: #6b7280; font-style: italic;">No active events scheduled for this week.</p>'
+    : '<ul style="font-size: 13px; color: #d1d5db; padding-left: 20px;">' + 
+      upcomingEvents.map(e => `<li style="margin-bottom: 5px;"><strong>${e.title}</strong> on ${new Date(e.date).toLocaleDateString()} - Status: <em>${e.status}</em></li>`).join('') + 
+      '</ul>';
+
+  const body = `
+    <p>Dear Professor ${facultyUser.name},</p>
+    <p>Here is your weekly advisor summary for the Anurag University ISC club activity:</p>
+    
+    <h3 style="color: #00BFFF; margin-bottom: 5px; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 5px;">⚡ Pending Approvals</h3>
+    <p style="font-size: 13px; color: #d1d5db;">There are currently <strong>${pendingApprovalsCount}</strong> events awaiting your approval.</p>
+
+    <h3 style="color: #8F5CFF; margin-top: 25px; margin-bottom: 5px; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 5px;">📅 Club Events This Week</h3>
+    ${eventsHtml}
+
+    <h3 style="color: #2ECC71; margin-top: 25px; margin-bottom: 5px; font-size: 15px; border-bottom: 1px solid #222; padding-bottom: 5px;">📈 Task Completion Rate</h3>
+    <p style="font-size: 13px; color: #d1d5db;">Coordinators have achieved a <strong>${taskCompletionRate}%</strong> task completion rate across active events.</p>
+  `;
+
+  return sendEmail(facultyUser.email, subject, title, body, 'Open Faculty Portal', 'http://localhost:5173');
+};

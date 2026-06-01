@@ -2,6 +2,7 @@ import React, { createContext, useEffect, useState, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
+import { subscribeUserToPush } from '../utils/pushSubscriptionHelper';
 
 export const SocketContext = createContext();
 
@@ -57,6 +58,9 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('connect', () => {
       // console.log('Socket connected:', newSocket.id);
       newSocket.emit('register-user', user.id);
+      
+      // Auto subscribe browser to web push notifications
+      subscribeUserToPush();
     });
 
     // Handle real-time notifications
@@ -91,6 +95,18 @@ export const SocketProvider = ({ children }) => {
           callerName: caller ? caller.name : 'Club Member',
           callerAvatar: caller ? caller.avatar : ''
         });
+      });
+    });
+
+    newSocket.on('call-initiated', (callData) => {
+      setActiveCall(prev => {
+        if (prev && prev.roomId === callData.roomId) {
+          return {
+            ...prev,
+            callId: callData.callId
+          };
+        }
+        return prev;
       });
     });
 

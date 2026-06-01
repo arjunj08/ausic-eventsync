@@ -16,6 +16,17 @@ export default function registerCallHandler(io, socket, activeUsers) {
 
       await call.save();
 
+      // Dynamically join the initiator's socket to the call room
+      socket.join(roomId);
+
+      // Emit call-initiated to the caller socket to provide the database Call ID
+      socket.emit('call-initiated', {
+        callId: call._id,
+        roomId,
+        initiatedBy,
+        type
+      });
+
       // Emit incoming-call to all other participants
       participants.forEach(pId => {
         if (String(pId) !== String(initiatedBy)) {
@@ -40,6 +51,9 @@ export default function registerCallHandler(io, socket, activeUsers) {
     try {
       const { callId, roomId, userId } = data;
       
+      // Join the receiver's socket to the call room
+      socket.join(roomId);
+
       await Call.findByIdAndUpdate(callId, {
         $set: { status: 'connected' }
       });
@@ -62,6 +76,9 @@ export default function registerCallHandler(io, socket, activeUsers) {
 
       // Broadcast call-declined to the room
       socket.to(roomId).emit('call-declined', { userId });
+
+      // Leave the call room
+      socket.leave(roomId);
     } catch (err) {
       console.error('Decline call error:', err);
     }
@@ -78,6 +95,9 @@ export default function registerCallHandler(io, socket, activeUsers) {
 
       // Broadcast call-ended to the room
       io.to(roomId).emit('call-ended');
+
+      // Leave the call room
+      socket.leave(roomId);
     } catch (err) {
       console.error('End call error:', err);
     }

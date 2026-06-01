@@ -4,6 +4,7 @@ import Team from '../models/Team.js';
 import Notification from '../models/Notification.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -156,13 +157,151 @@ router.patch('/:id/subrole', authMiddleware, adminOnly, async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.to(String(user._id)).emit('new_notification', notif);
-    }
-
-    res.json({ message: 'Subrole updated successfully', user });
+    }    res.json({ message: 'Subrole updated successfully', user });
   } catch (error) {
     console.error('Update subrole error:', error);
     res.status(500).json({ error: 'Failed to update subrole' });
   }
+});
+
+// Helper: Assign a user to a team and sync database arrays
+export const assignUserToTeam = async (userId, teamId, req) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('User not found');
+  
+  const oldTeamId = user.teamId;
+  const newTeam = await Team.findById(teamId);
+  if (!newTeam) throw new Error('Target team not found');
+  
+  if (oldTeamId && String(oldTeamId) === String(teamId)) {
+    return user;
+  }
+  
+  // Remove from old team if present
+  if (oldTeamId) {
+    await Team.findByIdAndUpdate(oldTeamId, { $pull: { memberIds: userId } });
+    
+    // Notify removal
+    const oldTeam = await Team.findById(oldTeamId);
+    if (oldTeam) {
+      const notifRemove = new Notification({
+        userId: user._id,
+        type: 'team_removed',
+        message: `You have been removed from ${oldTeam.name}`,
+        read: false
+      });
+      await notifRemove.save();
+      const io = req.app?.get('io');
+      if (io) io.to(String(user._id)).emit('new_notification', notifRemove);
+    }
+  }
+  
+  // Add to new team
+  if (!newTeam.memberIds.includes(userId)) {
+    newTeam.memberIds.push(userId);
+    await newTeam.save();
+  }
+  
+  user.teamId = teamId;
+  user.isOnboarded = true;
+  await user.save();
+  
+  // Notify user
+  const notifAdd = new Notification({
+    userId: user._id,
+    type: 'team_assigned',
+    message: `You have been added to ${newTeam.name} 🎉`,
+    read: false
+  });
+  await notifAdd.save();
+  const io = req.app?.get('io');
+  if (io) io.to(String(user._id)).emit('new_notification', notifAdd);
+  
+  // Audit log
+  await logActivity(req, req.user?.id, req.user?.name, req.user?.role, 'assign_team', 'team', `Assigned user ${user.name} to team ${newTeam.name}`, { userId, teamId });
+  
+  return user;
+};
+
+// Helper: Unassign a user from their team and sync arrays
+export const unassignUserFromTeam = async (userId, req) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error('User not found');
+  
+  const oldTeamId = user.teamId;
+  if (!oldTeamId) return user;
+  
+  const oldTeam = await Team.findById(oldTeamId);
+  
+  // Remove from old team
+  await Team.findByIdAndUpdate(oldTeamId, { $pull: { memberIds: userId } });
+  
+  user.teamId = null;
+  await user.save();
+  
+  // Notify user
+  if (oldTeam) {
+    const notifRemove = new Notification({
+      userId: user._id,
+      type: 'team_removed',
+      message: `You have been removed from ${oldTeam.name}`,
+      read: false
+    });
+    await notifRemove.save();
+    const io = req.app?.get('io');
+    if (io) io.to(String(user._id)).emit('new_notification', notifRemove);
+    
+    // Audit log
+    await logActivity(req, req.user?.id, req.user?.name, req.user?.role, 'unassign_team', 'team', `Unassigned user ${user.name} from team ${oldTeam.name}`, { userId, oldTeamId });
+  }
+  
+  return user;
+};
+
+// 4. Assign Team to user (Admin only)
+router.patch('/:id/assign-team', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { teamId } = req.body;
+    if (!teamId) {
+      return res.status(400).json({ error: 'Team ID is required' });
+    }
+    const user = await assignUserToTeam(req.params.id, teamId, req);
+    res.json({ message: 'Team assigned successfully', user });
+  } catch (error) {
+    console.error('Assign team error:', error);
+    res.status(500).json({ error: error.message || 'Failed to assign team' });
+  }
+});
+
+// 5. Unassign Team from user (Admin only)
+router.patch('/:id/unassign-team', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await unassignUserFromTeam(req.params.id, req);
+    res.json({ message: 'Team unassigned successfully', user });
+  } catch (error) {
+    console.error('Unassign team error:', error);
+    res.status(500).json({ error: error.message || 'Failed to unassign team' });
+  }
+});
+
+// 6. Get unassigned members (Auth)
+router.get('/unassigned', authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find({ teamId: null, role: 'member', status: 'active' }).select('name email avatar role subRole');
+    res.json(users);
+  } catch (error) {
+    console.error('Fetch unassigned members error:', error);
+    res.status(500).json({ error: 'Failed to fetch unassigned members' });
+  }
+});
+
+// 7. Get list of online user IDs
+router.get('/status/online', authMiddleware, (req, res) => {
+  const activeUsers = req.app.get('activeUsers');
+  if (!activeUsers) {
+    return res.json([]);
+  }
+  res.json(Array.from(activeUsers.keys()));
 });
 
 export default router;

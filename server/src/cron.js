@@ -7,7 +7,8 @@ import Event from './models/Event.js';
 import { 
   sendTaskAssignedEmail, 
   sendMeetingReminderEmail, 
-  sendWeeklyDigestEmail 
+  sendWeeklyDigestEmail,
+  sendFacultyWeeklyDigestEmail
 } from './services/emailService.js';
 
 // Helper to check if user has already been notified of this specific trigger
@@ -191,8 +192,54 @@ export const initScheduler = (io) => {
           console.error(`Failed to dispatch weekly digest to ${user.email}:`, mailErr);
         }
       }
+
+      // 3b. Send faculty digest summaries
+      const facultyAdvisors = await User.find({ role: 'faculty' });
+      const pendingApprovalsCount = await Event.countDocuments({ status: 'pending_approval' });
+      const upcomingEventsAll = await Event.find({ date: { $gte: now } }).limit(10);
+      
+      const totalTasks = await Task.countDocuments({});
+      const completedTasks = await Task.countDocuments({ status: 'done' });
+      const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+
+      for (const fac of facultyAdvisors) {
+        try {
+          await sendFacultyWeeklyDigestEmail(fac, upcomingEventsAll, pendingApprovalsCount, completionRate);
+        } catch (mailErr) {
+          console.error(`Failed to dispatch faculty weekly digest to ${fac.email}:`, mailErr);
+        }
+      }
     } catch (err) {
       console.error('Error running weekly digest cron:', err);
+    }
+  });
+
+  // 4. Period Check: Auto-reactivate suspended users whose suspension period ended
+  cron.schedule('*/30 * * * *', async () => {
+    try {
+      const now = new Date();
+      const expiredSuspendedUsers = await User.find({
+        status: 'suspended',
+        suspendedUntil: { $lte: now }
+      });
+
+      for (const u of expiredSuspendedUsers) {
+        u.status = 'active';
+        u.suspendedUntil = null;
+        u.suspensionReason = null;
+        await u.save();
+
+        console.log(`Auto-reactivated suspended user account: ${u.email}`);
+
+        // Notify user via Socket
+        if (io) {
+          io.to(String(u._id)).emit('account_reactivated', {
+            message: "Your temporary suspension has ended and your account is active."
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Suspension auto-reactivate cron error:', err);
     }
   });
 };

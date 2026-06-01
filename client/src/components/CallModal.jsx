@@ -18,8 +18,123 @@ export default function CallModal() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
+  const ringtoneRef = useRef(null);
 
   const isInitiator = activeCall?.initiatedBy === user?.id;
+
+  const startRingtone = (type) => {
+    try {
+      if (ringtoneRef.current) return;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      ringtoneRef.current = ctx;
+
+      const playTone = () => {
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        
+        if (type === 'ring') {
+          // Ringing: US telephone standard uses 440Hz + 480Hz dual tone
+          // Pattern: 2s on, 4s off
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.frequency.value = 440;
+          osc2.frequency.value = 480;
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          
+          let time = ctx.currentTime;
+          for (let i = 0; i < 20; i++) {
+            gain.gain.setValueAtTime(0.15, time);
+            gain.gain.setValueAtTime(0, time + 2);
+            time += 6;
+          }
+
+          osc1.start();
+          osc2.start();
+
+          ringtoneRef.current = {
+            stop: () => {
+              try {
+                osc1.stop();
+                osc2.stop();
+                ctx.close();
+              } catch (e) {}
+            }
+          };
+        } else {
+          // Dialing tone: US uses 350Hz + 440Hz dual tone
+          // Pattern: 1.5s on, 3s off
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.frequency.value = 350;
+          osc2.frequency.value = 440;
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          
+          let time = ctx.currentTime;
+          for (let i = 0; i < 25; i++) {
+            gain.gain.setValueAtTime(0.1, time);
+            gain.gain.setValueAtTime(0, time + 1.5);
+            time += 4.5;
+          }
+
+          osc1.start();
+          osc2.start();
+
+          ringtoneRef.current = {
+            stop: () => {
+              try {
+                osc1.stop();
+                osc2.stop();
+                ctx.close();
+              } catch (e) {}
+            }
+          };
+        }
+      };
+
+      playTone();
+    } catch (e) {
+      console.error('Audio ringtone failed to start:', e);
+    }
+  };
+
+  const stopRingtone = () => {
+    if (ringtoneRef.current && typeof ringtoneRef.current.stop === 'function') {
+      ringtoneRef.current.stop();
+    }
+    ringtoneRef.current = null;
+  };
+
+  useEffect(() => {
+    if (callStatus === 'ringing') {
+      startRingtone('dial');
+    } else if (callStatus === 'incoming') {
+      startRingtone('ring');
+    } else {
+      stopRingtone();
+    }
+
+    return () => {
+      stopRingtone();
+    };
+  }, [callStatus]);
 
   // Initialize WebRTC and Local Stream
   const initWebRTC = async () => {

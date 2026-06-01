@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, 
   Map, 
@@ -22,7 +23,9 @@ import {
   Search,
   Sparkles,
   Users,
-  Video
+  Video,
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 
 export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
@@ -35,7 +38,10 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
   const totalUnreadDMs = Object.values(unreadDMs).reduce((sum, count) => sum + count, 0);
 
   // Main primary tabs on the bottom navigation
-  const primaryTabs = [
+  const primaryTabs = user && user.role === 'faculty' ? [
+    { id: 'faculty_dashboard', label: 'Advisor Portal', icon: ShieldCheck },
+    { id: 'alerts', label: 'Alerts', icon: Bell, badge: unreadNotifCount }
+  ] : [
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'kanban', label: 'Kanban', icon: CheckSquare },
     { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
@@ -47,6 +53,7 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
   const secondaryTools = [
     { id: 'meetings', label: 'Meetings', icon: Video },
     { id: 'ai_planner', label: 'AI Planner', icon: Sparkles },
+    { id: 'availability_planner', label: 'Availability', icon: Calendar },
     { id: 'map', label: 'Zone Map', icon: Map },
     { id: 'recurring', label: 'Recurring Tasks', icon: RefreshCw },
     { id: 'reports', label: 'Reports', icon: BarChart2 },
@@ -56,6 +63,15 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
 
   // If user is Admin, insert Admin Dashboard, Squad Roles, and Attendance Report to secondary tools
   if (user && user.role === 'admin') {
+    if (!secondaryTools.some(t => t.id === 'admin_audit_log')) {
+      secondaryTools.unshift({ id: 'admin_audit_log', label: 'Audit Logs', icon: ShieldCheck });
+    }
+    if (!secondaryTools.some(t => t.id === 'admin_task_templates')) {
+      secondaryTools.unshift({ id: 'admin_task_templates', label: 'Task Templates', icon: FileText });
+    }
+    if (!secondaryTools.some(t => t.id === 'admin_team_reports')) {
+      secondaryTools.unshift({ id: 'admin_team_reports', label: 'Performance Reports', icon: BarChart2 });
+    }
     if (!secondaryTools.some(t => t.id === 'attendance_report')) {
       secondaryTools.unshift({ id: 'attendance_report', label: 'Attendance Audit', icon: ClipboardCheck });
     }
@@ -88,18 +104,22 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
         {user && (
           <div className="flex items-center space-x-4">
             {/* Spotlight Search trigger */}
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => setIsSearchOpen(true)} 
-              className="p-2 rounded-full hover:bg-gray-850 transition-colors text-gray-400 hover:text-white"
+              className="p-2 rounded-full hover:bg-gray-850 transition-colors text-gray-400 hover:text-white cursor-pointer"
               title="Search Workspace (Ctrl+K)"
             >
               <Search className="h-6 w-6" />
-            </button>
+            </motion.button>
 
             {/* Dedicated Chat Link */}
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => handleTabClick('chat')} 
-              className={`relative p-2 rounded-full hover:bg-gray-850 transition-colors ${activeTab === 'chat' ? 'text-[#00BFFF]' : 'text-gray-400'}`}
+              className={`relative p-2 rounded-full hover:bg-gray-850 transition-colors cursor-pointer ${activeTab === 'chat' ? 'text-[#00BFFF]' : 'text-gray-400'}`}
               title="Chat Room"
             >
               <MessageSquare className="h-6 w-6" />
@@ -108,12 +128,14 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
                   {totalUnreadDMs}
                 </span>
               )}
-            </button>
+            </motion.button>
 
             {/* Profile Avatar Clickable */}
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => handleTabClick('profile')}
-              className={`flex items-center space-x-2 p-1 rounded-lg transition-colors border hover:bg-gray-850 ${
+              className={`flex items-center space-x-2 p-1 rounded-lg transition-colors border hover:bg-gray-850 cursor-pointer ${
                 activeTab === 'profile' ? 'border-[#00BFFF] text-[#00BFFF]' : 'border-transparent text-gray-400'
               }`}
               title="My Profile"
@@ -126,19 +148,21 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
               <span className="text-sm font-semibold text-white hidden md:inline text-left">
                 {user.name}
                 <span className="block text-[10px] text-gray-450 font-normal">
-                  {user.role === 'admin' ? 'Coordinator' : 'Member'}
+                  {user.role === 'admin' ? 'Coordinator' : user.role === 'faculty' ? 'Faculty Advisor' : 'Member'}
                 </span>
               </span>
-            </button>
+            </motion.button>
 
             {/* Logout Button */}
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={logout} 
-              className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-gray-800"
+              className="p-2 text-gray-450 hover:text-red-500 transition-colors rounded-full hover:bg-gray-800 cursor-pointer"
               title="Logout"
             >
               <LogOut className="h-5 w-5" />
-            </button>
+            </motion.button>
           </div>
         )}
       </header>
@@ -149,10 +173,11 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <motion.button
+              whileTap={{ y: -2 }}
               key={tab.id}
               onClick={() => handleTabClick(tab.id)}
-              className="flex flex-col items-center justify-center flex-1 h-full py-1 text-gray-400 hover:text-white transition-all relative"
+              className="flex flex-col items-center justify-center flex-1 h-full py-1 text-gray-400 hover:text-white transition-all relative cursor-pointer"
             >
               <div className={`p-1 rounded-lg transition-colors ${isActive ? 'text-[#00BFFF]' : 'text-gray-400'}`}>
                 <Icon className="h-5.5 w-5.5" />
@@ -172,70 +197,89 @@ export default function Navbar({ activeTab, setActiveTab, setIsSearchOpen }) {
               {isActive && (
                 <span className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-[#00BFFF] rounded-t-full"></span>
               )}
-            </button>
+            </motion.button>
           );
         })}
 
         {/* More Menu Trigger Button */}
-        <button
-          onClick={() => setShowMoreMenu(!showMoreMenu)}
-          className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all relative ${
-            showMoreMenu || secondaryTools.some(t => t.id === activeTab) ? 'text-[#00BFFF]' : 'text-gray-400'
-          }`}
-        >
-          <div className="p-1 rounded-lg">
-            <MoreHorizontal className="h-5.5 w-5.5" />
-          </div>
-          <span className="text-[10px] font-medium tracking-wide mt-0.5">
-            More
-          </span>
-          {(showMoreMenu || secondaryTools.some(t => t.id === activeTab)) && (
-            <span className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-[#00BFFF] rounded-t-full"></span>
-          )}
-        </button>
+        {user && user.role !== 'faculty' && (
+          <motion.button
+            whileTap={{ y: -2 }}
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all relative cursor-pointer ${
+              showMoreMenu || secondaryTools.some(t => t.id === activeTab) ? 'text-[#00BFFF]' : 'text-gray-400'
+            }`}
+          >
+            <div className="p-1 rounded-lg">
+              <MoreHorizontal className="h-5.5 w-5.5" />
+            </div>
+            <span className="text-[10px] font-medium tracking-wide mt-0.5">
+              More
+            </span>
+            {(showMoreMenu || secondaryTools.some(t => t.id === activeTab)) && (
+              <span className="absolute bottom-0 left-1/4 right-1/4 h-[3px] bg-[#00BFFF] rounded-t-full"></span>
+            )}
+          </motion.button>
+        )}
       </nav>
 
       {/* Secondary Tools "More" Grid Menu Overlay */}
-      {showMoreMenu && (
-        <div className="fixed inset-0 bg-[#0a0a0ade]/95 backdrop-blur-md z-30 flex flex-col justify-end pb-16">
-          {/* Dismiss Clickable Background */}
-          <div className="absolute inset-0 cursor-pointer" onClick={() => setShowMoreMenu(false)}></div>
-
-          {/* Menu Card Content */}
-          <div className="bg-[#111111] border-t border-gray-800 rounded-t-2xl p-6 relative max-w-xl mx-auto w-full z-10 space-y-6">
-            <div className="flex justify-between items-center border-b border-gray-850 pb-3">
-              <h3 className="font-extrabold text-white text-md tracking-wider uppercase">Club Workspace Modules</h3>
-              <button 
-                onClick={() => setShowMoreMenu(false)}
-                className="text-gray-400 hover:text-white p-1 hover:bg-gray-850 rounded-full"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {secondaryTools.map((tool) => {
-                const ToolIcon = tool.icon;
-                const isToolActive = activeTab === tool.id;
-                return (
-                  <button
-                    key={tool.id}
-                    onClick={() => handleTabClick(tool.id)}
-                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 group transition-all duration-300 ${
-                      isToolActive 
-                        ? 'border-[#00BFFF] bg-[#00BFFF]/5 text-[#00BFFF]' 
-                        : 'border-gray-850 bg-[#181818] hover:border-gray-700 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <ToolIcon className="h-6 w-6" />
-                    <span className="text-[10px] font-bold tracking-wide leading-tight">{tool.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showMoreMenu && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-[#0a0a0ade]/95 backdrop-blur-md z-30 flex flex-col justify-end pb-16"
+          >
+            {/* Dismiss Clickable Background */}
+            <div className="absolute inset-0 cursor-pointer" onClick={() => setShowMoreMenu(false)}></div>
+  
+            {/* Menu Card Content */}
+            <motion.div 
+              initial={{ y: 150, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 150, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 26 }}
+              className="bg-[#111111] border-t border-gray-800 rounded-t-2xl p-6 relative max-w-xl mx-auto w-full z-10 space-y-6"
+            >
+              <div className="flex justify-between items-center border-b border-gray-850 pb-3">
+                <h3 className="font-extrabold text-white text-md tracking-wider uppercase">Club Workspace Modules</h3>
+                <motion.button 
+                  whileHover={{ rotate: 90 }}
+                  onClick={() => setShowMoreMenu(false)}
+                  className="text-gray-400 hover:text-white p-1 hover:bg-gray-850 rounded-full cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </motion.button>
+              </div>
+  
+              <div className="grid grid-cols-3 gap-4">
+                {secondaryTools.map((tool) => {
+                  const ToolIcon = tool.icon;
+                  const isToolActive = activeTab === tool.id;
+                  return (
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      key={tool.id}
+                      onClick={() => handleTabClick(tool.id)}
+                      className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 group transition-all duration-300 cursor-pointer ${
+                        isToolActive 
+                          ? 'border-[#00BFFF] bg-[#00BFFF]/5 text-[#00BFFF]' 
+                          : 'border-gray-850 bg-[#181818] hover:border-gray-700 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <ToolIcon className="h-6 w-6" />
+                      <span className="text-[10px] font-bold tracking-wide leading-tight">{tool.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

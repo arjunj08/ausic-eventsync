@@ -5,7 +5,8 @@ import { SocketContext } from '../context/SocketContext';
 import EventCard from '../components/EventCard';
 import EventDiscussion from '../components/EventDiscussion';
 import EventGallery from '../components/EventGallery';
-import { Plus, X, Calendar, Users, CheckSquare, Loader2, ArrowLeft, MessageSquare, Image, ClipboardList } from 'lucide-react';
+import EventGoals from '../components/EventGoals';
+import { Plus, X, Calendar, Users, CheckSquare, Loader2, ArrowLeft, MessageSquare, Image, ClipboardList, Target } from 'lucide-react';
 
 export default function Events() {
   const { user } = useContext(AuthContext);
@@ -322,6 +323,17 @@ export default function Events() {
                 <Image className="h-4 w-4" />
                 Gallery
               </button>
+              <button
+                onClick={() => setActiveDetailTab('goals')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeDetailTab === 'goals'
+                    ? 'border-[#00BFFF] text-[#00BFFF]'
+                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <Target className="h-4 w-4" />
+                Goals
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => setActiveDetailTab('rsvps')}
@@ -389,6 +401,10 @@ export default function Events() {
 
             {activeDetailTab === 'gallery' && (
               <EventGallery eventId={event._id} user={user} />
+            )}
+
+            {activeDetailTab === 'goals' && (
+              <EventGoals eventId={event._id} user={user} />
             )}
 
             {activeDetailTab === 'rsvps' && isAdmin && (

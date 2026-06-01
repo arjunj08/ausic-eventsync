@@ -13,6 +13,8 @@ import { authMiddleware } from '../middleware/authMiddleware.js';
 import { adminOnly } from '../middleware/roleMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { sendEmail } from '../services/emailService.js';
+import { logActivity } from '../utils/auditLogger.js';
+import { assignUserToTeam, unassignUserFromTeam } from './users.js';
 
 const router = express.Router();
 
@@ -398,6 +400,184 @@ router.post('/import-members', authMiddleware, adminOnly, upload.single('file'),
   } catch (error) {
     console.error('Import CSV error:', error);
     res.status(500).json({ error: 'Failed to import members from CSV' });
+  }
+});
+
+// Bulk assign team (PATCH /api/admin/bulk-assign-team)
+router.patch('/bulk-assign-team', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { userIds, teamId } = req.body;
+    if (!userIds || !Array.isArray(userIds)) {
+      return res.status(400).json({ error: 'User IDs array is required' });
+    }
+
+    const updatedUsers = [];
+    for (const uId of userIds) {
+      if (teamId) {
+        const u = await assignUserToTeam(uId, teamId, req);
+        updatedUsers.push(u);
+      } else {
+        const u = await unassignUserFromTeam(uId, req);
+        updatedUsers.push(u);
+      }
+    }
+
+    res.json({ message: 'Bulk team assignment completed successfully', count: updatedUsers.length });
+  } catch (error) {
+    console.error('Bulk team assign error:', error);
+    res.status(500).json({ error: error.message || 'Failed bulk assignment' });
+  }
+});
+
+// Deactivate user (PATCH /api/admin/users/:id/deactivate)
+router.patch('/users/:id/deactivate', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.status = 'inactive';
+    user.deactivatedAt = new Date();
+    user.deactivatedBy = req.user.id;
+    await user.save();
+
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'deactivate_user', 'user', `Deactivated user account: ${user.email}`, { targetUserId: user._id });
+
+    res.json({ message: 'User deactivated successfully', user });
+  } catch (error) {
+    console.error('Deactivate user error:', error);
+    res.status(500).json({ error: 'Failed to deactivate user' });
+  }
+});
+
+// Reactivate user (PATCH /api/admin/users/:id/reactivate)
+router.patch('/users/:id/reactivate', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.status = 'active';
+    user.deactivatedAt = null;
+    user.deactivatedBy = null;
+    user.suspendedUntil = null;
+    user.suspensionReason = null;
+    await user.save();
+
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'reactivate_user', 'user', `Reactivated user account: ${user.email}`, { targetUserId: user._id });
+
+    // Send email alert
+    try {
+      await sendEmail(
+        user.email,
+        'Your Account Has Been Reactivated',
+        '✅ Account Restored',
+        `
+          <p>Hi ${user.name},</p>
+          <p>Your <strong>AUISC EventSync</strong> account has been reactivated by an administrator.</p>
+          <p>You can now log in and resume coordinating event tasks.</p>
+        `,
+        'Log In to EventSync',
+        process.env.CLIENT_URL || 'http://localhost:5173'
+      );
+    } catch (emailErr) {
+      console.error('Failed to send reactivation email:', emailErr);
+    }
+
+    res.json({ message: 'User reactivated successfully', user });
+  } catch (error) {
+    console.error('Reactivate user error:', error);
+    res.status(500).json({ error: 'Failed to reactivate user' });
+  }
+});
+
+// Suspend user (PATCH /api/admin/users/:id/suspend)
+router.patch('/users/:id/suspend', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { duration, reason } = req.body; // duration: '1d', '3d', '1w' or Date string
+    if (!duration) {
+      return res.status(400).json({ error: 'Suspension duration is required' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let suspendedUntil;
+    if (duration === '1d') {
+      suspendedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (duration === '3d') {
+      suspendedUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    } else if (duration === '1w') {
+      suspendedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    } else {
+      suspendedUntil = new Date(duration);
+      if (isNaN(suspendedUntil.getTime())) {
+        return res.status(400).json({ error: 'Invalid suspension duration value' });
+      }
+    }
+
+    user.status = 'suspended';
+    user.suspendedUntil = suspendedUntil;
+    user.suspensionReason = reason || '';
+    await user.save();
+
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'suspend_user', 'user', `Suspended user account: ${user.email} until ${suspendedUntil.toLocaleDateString()}`, { targetUserId: user._id, duration, reason });
+
+    res.json({ message: `User suspended successfully until ${suspendedUntil.toLocaleDateString()}`, user });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ error: 'Failed to suspend user' });
+  }
+});
+
+// Delete user permanently (DELETE /api/admin/users/:id)
+router.delete('/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const email = user.email;
+    const name = user.name;
+
+    // 1. Unassign all their tasks
+    await Task.updateMany({ assignedTo: user._id }, { $set: { assignedTo: null, status: 'todo' } });
+
+    // 2. Remove from team memberIds
+    if (user.teamId) {
+      await Team.findByIdAndUpdate(user.teamId, { $pull: { memberIds: user._id } });
+    }
+
+    // 3. Delete user
+    await User.findByIdAndDelete(req.params.id);
+
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'delete_user', 'user', `Permanently deleted user account: ${email} (${name})`, { targetUserId: req.params.id });
+
+    res.json({ message: 'User permanently deleted' });
+  } catch (error) {
+    console.error('Permanent delete error:', error);
+    res.status(500).json({ error: 'Failed to permanently delete user' });
+  }
+});
+
+// Get admin users query (GET /api/admin/users?status=inactive)
+router.get('/users', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = {};
+    if (status) {
+      filter.status = status;
+    }
+    const users = await User.find(filter).populate('teamId', 'name color');
+    res.json(users);
+  } catch (error) {
+    console.error('Fetch admin users error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin users directory' });
   }
 });
 

@@ -29,6 +29,12 @@ import Onboarding from './pages/Onboarding';
 import PublicEvent from './pages/PublicEvent';
 import AttendanceReport from './pages/AttendanceReport';
 import OTPVerify from './pages/OTPVerify';
+import FacultyDashboard from './pages/FacultyDashboard';
+import TeamReports from './pages/TeamReports';
+import TaskTemplates from './pages/TaskTemplates';
+import AvailabilityPlanner from './pages/AvailabilityPlanner';
+import AuditLogConsole from './pages/AuditLogConsole';
+import TeamDetails from './pages/TeamDetails';
 
 // Components
 import SearchOverlay from './components/SearchOverlay';
@@ -36,6 +42,7 @@ import AnnouncementBanner from './components/AnnouncementBanner';
 import PwaInstallBanner from './components/PwaInstallBanner';
 
 import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function MainAppContent() {
   const { user, loading } = useContext(AuthContext);
@@ -53,6 +60,13 @@ function MainAppContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Default tab for faculty advisor on load
+  useEffect(() => {
+    if (user && user.role === 'faculty') {
+      setActiveTab('faculty_dashboard');
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -106,6 +120,16 @@ function MainAppContent() {
         return <MembersConsole />;
       case 'attendance_report':
         return <AttendanceReport />;
+      case 'faculty_dashboard':
+        return <FacultyDashboard />;
+      case 'admin_team_reports':
+        return <TeamReports />;
+      case 'admin_task_templates':
+        return <TaskTemplates />;
+      case 'availability_planner':
+        return <AvailabilityPlanner />;
+      case 'admin_audit_log':
+        return <AuditLogConsole />;
       default:
         return <Events />;
     }
@@ -123,8 +147,19 @@ function MainAppContent() {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} setIsSearchOpen={setIsSearchOpen} />
       
       {/* Main Content Area */}
-      <main className="flex-1 w-full bg-[#0a0a0a] pt-16 pb-16">
-        {renderPage()}
+      <main className="flex-1 w-full bg-[#0a0a0a] pt-16 pb-16 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="w-full h-full"
+          >
+            {renderPage()}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Persistent global widgets */}
@@ -136,10 +171,7 @@ function MainAppContent() {
       <SearchOverlay 
         isOpen={isSearchOpen} 
         onClose={() => setIsSearchOpen(false)} 
-        onSelect={(tabId) => {
-          setActiveTab(tabId);
-          setIsSearchOpen(false);
-        }} 
+        setActiveTab={setActiveTab} 
       />
     </div>
   );
@@ -153,6 +185,7 @@ function App() {
           <Routes>
             <Route path="/events/public/:eventId" element={<PublicEvent />} />
             <Route path="/otp-verify" element={<OTPVerify />} />
+            <Route path="/teams/:teamId" element={<TeamDetails />} />
             <Route path="*" element={<MainAppContent />} />
           </Routes>
         </SocketProvider>

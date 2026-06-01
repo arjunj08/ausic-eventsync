@@ -30,6 +30,15 @@ import usersRoutes from './routes/users.js';
 import commentsRoutes from './routes/comments.js';
 import mediaRoutes from './routes/media.js';
 import announcementsRoutes from './routes/announcements.js';
+import photosRoutes from './routes/photos.js';
+import photoAlbumsRoutes from './routes/photoAlbums.js';
+import facultyRoutes from './routes/faculty.js';
+import reportsRoutes from './routes/reports.js';
+import taskTemplatesRoutes from './routes/taskTemplates.js';
+import availabilityRoutes from './routes/availability.js';
+import dmRoutes from './routes/dm.js';
+import goalsRoutes from './routes/goals.js';
+import auditLogsRoutes from './routes/auditLogs.js';
 import { initScheduler } from './cron.js';
 
 // Socket Handlers
@@ -94,6 +103,15 @@ app.use('/api/users', usersRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/announcements', announcementsRoutes);
+app.use('/api/photos', photosRoutes);
+app.use('/api/photo-albums', photoAlbumsRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/task-templates', taskTemplatesRoutes);
+app.use('/api/availability', availabilityRoutes);
+app.use('/api/dm', dmRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/audit-logs', auditLogsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

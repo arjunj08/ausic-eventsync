@@ -7,6 +7,7 @@ import Team from '../models/Team.js';
 import Notification from '../models/Notification.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { sendEmail } from '../services/emailService.js';
+import { logActivity } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -136,11 +137,36 @@ router.post('/login', async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      await logActivity(req, null, 'Guest', 'guest', 'login_failed', 'user', `Failed login attempt for ${email}`, { email });
       return res.status(400).json({ error: 'Invalid email or password' });
+    }
+
+    // Check deactivated status
+    if (user.status === 'inactive') {
+      await logActivity(req, user._id, user.name, user.role, 'login_failed_deactivated', 'user', `Blocked login for deactivated user: ${email}`, { email });
+      return res.status(401).json({ error: 'Your account has been deactivated. Please contact an admin.' });
+    }
+
+    // Check temporary suspension status
+    if (user.status === 'suspended') {
+      if (user.suspendedUntil && user.suspendedUntil > new Date()) {
+        await logActivity(req, user._id, user.name, user.role, 'login_failed_suspended', 'user', `Blocked login for suspended user: ${email}`, { email });
+        return res.status(401).json({ 
+          error: `Your account is temporarily suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}. Reason: ${user.suspensionReason || 'No reason specified'}` 
+        });
+      } else {
+        // Suspension has expired, auto-reactivate
+        user.status = 'active';
+        user.suspendedUntil = null;
+        user.suspensionReason = null;
+        await user.save();
+        await logActivity(req, user._id, user.name, user.role, 'auto_reactivated_suspension', 'user', `Auto-reactivated account for ${email} as suspension period ended.`);
+      }
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
+      await logActivity(req, user._id, user.name, user.role, 'login_failed', 'user', `Incorrect password attempt for ${email}`, { email });
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
@@ -183,6 +209,8 @@ router.post('/login', async (req, res) => {
 
     res.cookie('token', token, COOKIE_OPTIONS);
 
+    await logActivity(req, user._id, user.name, user.role, 'login_success', 'user', `User logged in successfully: ${user.email}`);
+
     res.json({
       message: 'Login successful',
       user: {
@@ -203,7 +231,10 @@ router.post('/login', async (req, res) => {
 });
 
 // Logout endpoint
-router.post('/logout', (req, res) => {
+router.post('/logout', authMiddleware, async (req, res) => {
+  if (req.user) {
+    await logActivity(req, req.user.id, req.user.name, req.user.role, 'logout', 'user', `User logged out: ${req.user.email}`);
+  }
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
 });
