@@ -276,7 +276,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 // Fetch all members list (for dropdowns and team settings)
 router.get('/members', authMiddleware, async (req, res) => {
   try {
-    const members = await User.find({}).select('name email role avatar teamId');
+    const members = await User.find({}).select('name email role subRole status avatar teamId suspendedUntil suspensionReason');
     res.json(members);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch members list' });
