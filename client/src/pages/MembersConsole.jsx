@@ -35,6 +35,7 @@ export default function MembersConsole() {
 
   // Modals state
   const [removingUser, setRemovingUser] = useState(null);
+  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
   const [suspendingUser, setSuspendingUser] = useState(null);
 
   // Suspension inputs
@@ -129,7 +130,6 @@ export default function MembersConsole() {
   // Permanently Delete User API call
   const handlePermanentDeleteUser = async () => {
     if (!removingUser) return;
-    if (!window.confirm(`⚠️ WARNING: Are you absolutely sure you want to permanently delete ${removingUser.name}? This removes all their tasks, roles, and cannot be undone.`)) return;
 
     const loadingToast = toast.loading('Permanently deleting account...');
     try {
@@ -137,6 +137,7 @@ export default function MembersConsole() {
       await axios.delete(`/api/admin/users/${uId}`);
       toast.success('User permanently deleted from EventSync.', { id: loadingToast });
       setRemovingUser(null);
+      setConfirmPermanentDelete(false);
       fetchMembersAndTeams();
     } catch (err) {
       toast.error('Failed to permanently delete user.', { id: loadingToast });
@@ -472,7 +473,7 @@ export default function MembersConsole() {
                                 <Clock className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => setRemovingUser(member)}
+                                onClick={() => { setRemovingUser(member); setConfirmPermanentDelete(false); }}
                                 className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg cursor-pointer"
                                 title="Remove User"
                               >
@@ -509,36 +510,70 @@ export default function MembersConsole() {
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className="bg-[#111111] border border-gray-850 rounded-2xl w-full max-w-md p-6 shadow-2xl text-xs space-y-5"
             >
-              <div className="flex items-start gap-3 text-red-500">
-                <AlertTriangle className="h-8 w-8 shrink-0" />
-                <div>
-                  <h3 className="font-extrabold text-white text-base">Remove User: {removingUser.name}?</h3>
-                  <p className="text-gray-400 mt-1 leading-normal">
-                    Are you sure you want to remove this user? Removing them will unassign their tasks and restrict system access.
-                  </p>
-                </div>
-              </div>
+              {!confirmPermanentDelete ? (
+                <>
+                  <div className="flex items-start gap-3 text-red-500">
+                    <AlertTriangle className="h-8 w-8 shrink-0" />
+                    <div>
+                      <h3 className="font-extrabold text-white text-base">Remove User: {removingUser.name}?</h3>
+                      <p className="text-gray-400 mt-1 leading-normal">
+                        Are you sure you want to remove this user? Removing them will unassign their tasks and restrict system access.
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="space-y-3 pt-3 border-t border-gray-850">
-                <button
-                  onClick={handleDeactivateUser}
-                  className="w-full bg-gray-850 hover:bg-gray-800 border border-gray-800 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
-                >
-                  Deactivate (Soft Delete)
-                </button>
-                <button
-                  onClick={handlePermanentDeleteUser}
-                  className="w-full bg-red-600/10 hover:bg-red-650/20 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
-                >
-                  Permanently Delete (Hard Delete)
-                </button>
-                <button
-                  onClick={() => setRemovingUser(null)}
-                  className="w-full bg-transparent hover:bg-gray-900 text-gray-500 py-2 rounded-xl font-bold uppercase cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
+                  <div className="space-y-3 pt-3 border-t border-gray-850">
+                    <button
+                      onClick={handleDeactivateUser}
+                      className="w-full bg-gray-850 hover:bg-gray-800 border border-gray-800 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
+                    >
+                      Deactivate (Soft Delete)
+                    </button>
+                    <button
+                      onClick={() => setConfirmPermanentDelete(true)}
+                      className="w-full bg-red-600/10 hover:bg-red-650/20 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
+                    >
+                      Permanently Delete (Hard Delete)
+                    </button>
+                    <button
+                      onClick={() => setRemovingUser(null)}
+                      className="w-full bg-transparent hover:bg-gray-900 text-gray-500 py-2 rounded-xl font-bold uppercase cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 text-red-500">
+                    <AlertTriangle className="h-8 w-8 shrink-0 text-red-500 animate-pulse" />
+                    <div>
+                      <h3 className="font-extrabold text-white text-base">⚠️ Double Confirmation Required</h3>
+                      <p className="text-gray-400 mt-1 leading-normal">
+                        Are you absolutely sure you want to permanently delete <strong className="text-white">{removingUser.name}</strong>?
+                      </p>
+                      <p className="text-red-400 mt-1.5 font-bold leading-normal bg-red-500/5 border border-red-550/20 p-2.5 rounded text-[11px]">
+                        This will unassign all their event tasks, remove them from squads, and completely delete their account credentials. THIS CANNOT BE UNDONE.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-3 border-t border-gray-850">
+                    <button
+                      onClick={handlePermanentDeleteUser}
+                      className="w-full bg-red-600 hover:bg-red-700 text-black font-extrabold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
+                    >
+                      Confirm Permanent Deletion
+                    </button>
+                    <button
+                      onClick={() => setConfirmPermanentDelete(false)}
+                      className="w-full bg-gray-850 hover:bg-gray-800 border border-gray-800 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider cursor-pointer transition-colors"
+                    >
+                      No, Go Back
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
