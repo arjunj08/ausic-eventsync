@@ -3,7 +3,8 @@ import axios from 'axios';
 
 // Configure Axios globally
 const devURL = 'http://localhost:5000';
-axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? devURL : '');
+const prodURL = 'https://eventsync-backend.onrender.com';
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? devURL : prodURL);
 axios.defaults.withCredentials = true; // Required to send cookies
 
 export const AuthContext = createContext();
