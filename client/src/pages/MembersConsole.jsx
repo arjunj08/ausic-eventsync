@@ -328,7 +328,7 @@ export default function MembersConsole() {
                   <option value="" disabled>Select Squad...</option>
                   <option value="unassign">Unassign / Remove</option>
                   {teams.map(t => (
-                    <option key={t._id} value={t._id}>{t.name}</option>
+                    <option key={String(t._id)} value={String(t._id)}>{t.name}</option>
                   ))}
                 </select>
               </div>
@@ -408,14 +408,14 @@ export default function MembersConsole() {
                       {/* Team Assignment dropdown */}
                       <td className="px-6 py-4">
                         <select
-                          value={mTeamId || ''}
+                          value={mTeamId ? String(mTeamId) : ''}
                           onChange={(e) => handleAssignTeam(mId, e.target.value)}
                           className="bg-[#1A1A1A] border border-gray-800 text-white rounded-lg px-2 py-1.5 focus:outline-none cursor-pointer font-semibold uppercase text-[9px] tracking-wider"
-                          style={{ color: mTeamId ? (teams.find(t => t._id === mTeamId)?.color || '#fff') : '#888' }}
+                          style={{ color: mTeamId ? (teams.find(t => String(t._id) === String(mTeamId))?.color || '#fff') : '#888' }}
                         >
                           <option value="">Unassigned</option>
                           {teams.map(t => (
-                            <option key={t._id} value={t._id} style={{ color: t.color }}>{t.name}</option>
+                            <option key={String(t._id)} value={String(t._id)} style={{ color: t.color }}>{t.name}</option>
                           ))}
                         </select>
                       </td>

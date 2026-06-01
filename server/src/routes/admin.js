@@ -413,7 +413,7 @@ router.patch('/bulk-assign-team', authMiddleware, adminOnly, async (req, res) =>
 
     const updatedUsers = [];
     for (const uId of userIds) {
-      if (teamId) {
+      if (teamId && teamId !== 'unassign') {
         const u = await assignUserToTeam(uId, teamId, req);
         updatedUsers.push(u);
       } else {
